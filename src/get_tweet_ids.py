@@ -375,12 +375,11 @@ print("Merging df_train and df...")
 df_train = df_train.merge(df, left_on='id', right_on='id_str')
 
 df_train = df_train[['id', 'full_text', 'image_id', 'falsified', 'topic']]
+df_train['full_text'] = df_train['full_text'].apply(lambda text: text.replace('\r', ' '))
 
 
 # In[17]:
 
-print("Dropping NA in df_train...")
-df_train = df_train.dropna()
 print("Writing to train_full_text_completed.csv...")
 df_train.to_csv('/import/network-temp/yimengg/data/twitter-comms/train/train_full_text_completed.csv')
 
@@ -410,8 +409,8 @@ df_media = df_media.rename({'id': 'media_id', 'id_str': 'media_id_str'}, axis='c
 
 logger.info("Reading train_full_text_completed.csv...")
 df_train = pd.read_csv('/import/network-temp/yimengg/data/twitter-comms/train/train_full_text_completed.csv', 
-                     index_col=0)
-#                     dtype={"id": int, "id_str":int})
+                     index_col=0,
+                     dtype={"id": int, "image_id": int})
 
 
 # In[ ]:
