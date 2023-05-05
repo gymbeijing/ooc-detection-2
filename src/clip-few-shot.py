@@ -20,6 +20,7 @@ import torch.utils.data as data
 from torch import optim
 from torch.autograd import Variable
 import numpy as np
+from sentence_transformers import util
 from nltk.tokenize import TweetTokenizer
 import re, string
 
@@ -61,33 +62,52 @@ class TwitterCOMMsDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.df.iloc[idx]
-        caption = item['full_text']
-        caption = ' '.join(tt.tokenize(caption))
-        caption = self.remove_punc(self.remove_URL(caption))
         
-        img_filename = item['filename']
         topic = item['topic']
         falsified = int(item['falsified'])
         not_falsified = float(not item['falsified'])
+#         label = np.array((falsified, not_falsified))
         label = np.array(falsified)
         domain = topic.split('_')[0]
         diff = topic.split('_')[1]
         
+        # Preprocess the text
+        caption = item['full_text']
+        caption = ' '.join(tt.tokenize(caption))
+        caption = self.remove_punc(self.remove_URL(caption))
+        
+        # Open the image
+        img_filename = item['filename']
         raw_image = Image.open(os.path.join(self.img_dir, img_filename)).convert('RGB')
+        
+        # Get the multimodal embedding
         image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
         text_input = txt_processors["eval"](caption)
         sample = {"image": image, "text_input": [text_input]}   # image shape: [1, 3, 224, 224]
+        features = model.extract_features(sample)
+        features_image = features.image_embeds   # [1, 512]
+        features_text = features.text_embeds   # [1, 512]
+#         multimodal_emb = torch.cat((features_image, features_text), 1)
+        multimodal_emb = features_image * features_text
+        
+        cos_sim = util.cos_sim(features_text, features_image)
+#         features_image_proj = features_image.image_embeds_proj[:,0,:]   # [1, 256]
+#         features_text_proj = features_text.text_embeds_proj[:,0,:]   # [1, 256]
+        
+#         multimodal_emb = torch.cat((features_image_proj, features_text_proj), 1)
+#         multimodal_emb = features_image_proj * features_text_proj   # [1, 256]
+#         print(multimodal_emb.shape)
 
-        features_multimodal = model.extract_features(sample, mode="multimodal")   # [1, 32, 768] ??? image and text might mismatch
-        multimodal_emb = features_multimodal.multimodal_embeds[:, 0, :]   # [1, 768]
+#         similarity = features_image_proj @ features_text_proj.t()
 
         return {"multimodal_emb": multimodal_emb,
                 "topic": topic, 
                 "label": label, 
                 "domain": domain, 
-                "difficulty": diff}
+                "difficulty": diff,
+               "similarity": cos_sim}
         
-
+    
 class Net(nn.Module):
     def __init__(self, in_dim, out_dim=2):
         super(Net, self).__init__()
@@ -113,7 +133,7 @@ def normal_init(m, mean, std):
 
 def train(train_iterator, val_iterator, device):
 
-    net = Net(768)
+    net = Net(512)
     net.cuda()
     net.train()
     net.weight_init(mean=0, std=0.02)
@@ -123,6 +143,8 @@ def train(train_iterator, val_iterator, device):
     
     criterion = nn.CrossEntropyLoss()
     criterion.to(device)
+    
+    softmax = nn.Softmax(dim=1)
  
     EPOCHS = 2
     for epoch in range(EPOCHS):
@@ -144,7 +166,10 @@ def train(train_iterator, val_iterator, device):
             
             total_loss += loss.item()
             
-            _, top_pred = y_preds.topk(1, 1)
+            top_pred = torch.zeros_like(labels)
+            y_preds = softmax(y_preds)
+#             print(y_preds[:, 0])
+            top_pred[y_preds[:, 1] >= 0.5] = 1
             y = labels.cpu()
             batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(batch_size)
@@ -166,6 +191,8 @@ def test(net, iterator, criterion, device):
     
     net.eval()
     
+    softmax = nn.Softmax(dim=1)
+    
     with torch.no_grad():
         total_loss = 0
         num_correct = 0
@@ -180,7 +207,10 @@ def test(net, iterator, criterion, device):
             
             total_loss += loss.item()
             
-            _, top_pred = y_preds.topk(1, 1)
+            top_pred = torch.zeros_like(labels)
+            y_preds = softmax(y_preds)
+#             print(y_preds[:, 0])
+            top_pred[y_preds[:, 1] >= 0.5] = 1
             y = labels.cpu()
             batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(batch_size)
@@ -202,11 +232,13 @@ if __name__ == '__main__':
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     logger.info(device)
 
-    logger.info("Loading the blip 2 model")
+    logger.info("Loading the clip model")
     # Load the model
     model, vis_processors, txt_processors = load_model_and_preprocess(
-        name = "blip2_feature_extractor", model_type="pretrain", is_eval=True, device=device
+        name = "clip_feature_extractor", model_type="ViT-B-32", is_eval=True, device=device
     )
+    # Load the tokenizer
+    tt = TweetTokenizer()
     
     logger.info("Loading training data")
     train_data = TwitterCOMMsDataset(csv_path='../data/train_completed.csv',
@@ -218,7 +250,7 @@ if __name__ == '__main__':
                                    img_dir='/import/network-temp/yimengg/data/twitter-comms/images/val_images/val_tweet_image_ids')
     logger.info(f"Found {val_data.__len__()} items in valid data")
     
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
     train_iterator = data.DataLoader(train_data, 
                                      shuffle=True, 
                                      batch_size=BATCH_SIZE)
