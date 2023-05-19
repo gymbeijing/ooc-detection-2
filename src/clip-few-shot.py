@@ -256,7 +256,7 @@ def test(net, iterator, criterion, device):
             topic_list = ["climate", "covid", "military"]
             
             for topic in topic_list:
-            	inds = []
+                inds = []
                 # print(topic_labels)   # class 'list'
                 for j, tl in enumerate(topic_labels):
                     if topic in tl:
