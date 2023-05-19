@@ -208,6 +208,7 @@ if __name__ == '__main__':
         name = "blip2_feature_extractor", model_type="pretrain", is_eval=True, device=device
     )
     
+    tt = TweetTokenizer()
     logger.info("Loading training data")
     train_data = TwitterCOMMsDataset(csv_path='../data/train_completed.csv',
                                         img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids')   # took ~one hour to construct the dataset

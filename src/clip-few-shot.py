@@ -25,6 +25,7 @@ from nltk.tokenize import TweetTokenizer
 import re, string
 
 import logging
+import numpy as np
 
 # Logger
 logger = logging.getLogger()
@@ -36,11 +37,12 @@ logging.basicConfig(
 # # Define the Dataset class
 
 class TwitterCOMMsDataset(Dataset):
-    def __init__(self, csv_path, img_dir):
+    def __init__(self, csv_path, img_dir, seen_topics=['military', 'covid', 'climate'], few_shot_topic=[]):
         """
         Args:
             csv_path (string): Path to the {train_completed|val_completed}.csv file.
-            image_folder_dir (string): Directory containing the images
+            image_folder_dir (string): Directory containing the images.
+            selected_topic (string): Topic
         """
         self.df = pd.read_csv(csv_path, index_col=0)
         self.img_dir = img_dir
@@ -48,6 +50,27 @@ class TwitterCOMMsDataset(Dataset):
         self.df['exists'] = self.df['filename'].apply(lambda filename: os.path.exists(os.path.join(img_dir, filename)))
         delete_row = self.df[self.df["exists"]==False].index
         self.df = self.df.drop(delete_row)
+        
+        if 'military' in few_shot_topic:
+            self.df['is_military'] = self.df['topic'].apply(lambda topic: 'military' in topic)
+            delete_row = self.df[self.df["is_military"]==True].index
+            keep_row = self.df[self.df["is_military"]==True].sample(n=5, random_state=42).index   # the few shots
+            delete_row = np.array(list(set(delete_row)-set(keep_row)))
+            self.df = self.df.drop(delete_row)
+
+        if 'covid' in few_shot_topic:
+            self.df['is_covid'] = self.df['topic'].apply(lambda topic: 'covid' in topic)
+            delete_row = self.df[self.df["is_covid"]==True].index
+            keep_row = self.df[self.df["is_covid"]==True].sample(n=5, random_state=42).index   # the few shots
+            delete_row = np.array(list(set(delete_row)-set(keep_row)))
+            self.df = self.df.drop(delete_row)
+
+        if 'climate' in few_shot_topic:
+            self.df['is_climate'] = self.df['topic'].apply(lambda topic: 'climate' in topic)
+            delete_row = self.df[self.df["is_climate"]==True].index
+            keep_row = self.df[self.df["is_climate"]==True].sample(n=5, random_state=42).index   # the few shots
+            delete_row = np.array(list(set(delete_row)-set(keep_row)))
+            self.df = self.df.drop(delete_row)
     
     def __len__(self):
         return len(self.df)
@@ -107,6 +130,7 @@ class TwitterCOMMsDataset(Dataset):
                 "difficulty": diff,
                "similarity": cos_sim}
         
+        
     
 class Net(nn.Module):
     def __init__(self, in_dim, out_dim=2):
@@ -146,7 +170,7 @@ def train(train_iterator, val_iterator, device):
     
     softmax = nn.Softmax(dim=1)
  
-    EPOCHS = 2
+    EPOCHS = 5
     for epoch in range(EPOCHS):
         net.train()
         total_loss = 0
@@ -195,8 +219,16 @@ def test(net, iterator, criterion, device):
     
     with torch.no_grad():
         total_loss = 0
-        num_correct = 0
-        num_total = 0
+        num_correct = dict()
+        num_total = dict()
+        num_correct["all"] = 0
+        num_total["all"] = 0
+        num_correct["climate"] = 0
+        num_total["climate"] = 0
+        num_correct["covid"] = 0
+        num_total["covid"] = 0
+        num_correct["military"] = 0
+        num_total["military"] = 0
         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
             inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
@@ -215,13 +247,28 @@ def test(net, iterator, criterion, device):
             batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(batch_size)
             
-            num_correct += sum(top_pred == y).item()
-            num_total += batch_size
+            num_correct["all"] += sum(top_pred == y).item()
+            num_total["all"] += batch_size
+            
+            # topic-wise performance
+            topic_labels = batch["topic"]
+            
+            topic_list = ["climate", "covid", "military"]
+            
+            for topic in topic_list:
+            	inds = []
+                # print(topic_labels)   # class 'list'
+                for j, tl in enumerate(topic_labels):
+                    if topic in tl:
+                        inds.append(j)
+                num_total[topic] += len(inds)
+                inds = np.array(inds)
+                num_correct[topic] += sum(top_pred[inds] == y[inds]).item()
             
             if i % 100 == 0:
-                logger.info("%d-th batch: Testing accuracy %.2f, loss: %.2f" % (i, num_correct/num_total, total_loss/num_total))
+                logger.info("%d-th batch: Testing accuracy %.2f, loss: %.2f" % (i, num_correct["all"]/num_total["all"], total_loss/num_total["all"]))
             
-        logger.info("Testing accuracy %.2f, loss: %.2f" % (num_correct/num_total, total_loss/num_total))
+        logger.info("Overall testing accuracy %.2f, climate testing accuracy %.2f, covid testing accuracy %.2f, military testing accuracy %.2f, loss: %.2f" % (num_correct["all"]/num_total["all"], num_correct["climate"]/num_total["climate"], num_correct["covid"]/num_total["covid"], num_correct["military"]/num_total["military"], total_loss/num_total["all"]))
                 
     return
 
@@ -242,7 +289,9 @@ if __name__ == '__main__':
     
     logger.info("Loading training data")
     train_data = TwitterCOMMsDataset(csv_path='../data/train_completed.csv',
-                                        img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids')   # took ~one hour to construct the dataset
+                                     img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
+                                    seen_topics=['military', 'climate'],
+                                    few_shot_topic=['covid'])   # took ~one hour to construct the dataset
     logger.info(f"Found {train_data.__len__()} items in training data")
     
     logger.info("Loading valid data")
