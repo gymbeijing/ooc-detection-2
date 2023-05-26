@@ -54,22 +54,22 @@ class TwitterCOMMsDataset(Dataset):
         if 'military' in few_shot_topic:
             self.df['is_military'] = self.df['topic'].apply(lambda topic: 'military' in topic)
             delete_row = self.df[self.df["is_military"]==True].index
-            keep_row = self.df[self.df["is_military"]==True].sample(n=5, random_state=42).index   # the few shots
-            delete_row = np.array(list(set(delete_row)-set(keep_row)))
+            #keep_row = self.df[self.df["is_military"]==True].sample(n=5, random_state=42).index   # the few shots
+            #delete_row = np.array(list(set(delete_row)-set(keep_row)))
             self.df = self.df.drop(delete_row)
 
         if 'covid' in few_shot_topic:
             self.df['is_covid'] = self.df['topic'].apply(lambda topic: 'covid' in topic)
             delete_row = self.df[self.df["is_covid"]==True].index
-            keep_row = self.df[self.df["is_covid"]==True].sample(n=5, random_state=42).index   # the few shots
-            delete_row = np.array(list(set(delete_row)-set(keep_row)))
+            #keep_row = self.df[self.df["is_covid"]==True].sample(n=5, random_state=42).index   # the few shots
+            #delete_row = np.array(list(set(delete_row)-set(keep_row)))
             self.df = self.df.drop(delete_row)
 
         if 'climate' in few_shot_topic:
             self.df['is_climate'] = self.df['topic'].apply(lambda topic: 'climate' in topic)
             delete_row = self.df[self.df["is_climate"]==True].index
-            keep_row = self.df[self.df["is_climate"]==True].sample(n=5, random_state=42).index   # the few shots
-            delete_row = np.array(list(set(delete_row)-set(keep_row)))
+            #keep_row = self.df[self.df["is_climate"]==True].sample(n=5, random_state=42).index   # the few shots
+            #delete_row = np.array(list(set(delete_row)-set(keep_row)))
             self.df = self.df.drop(delete_row)
     
     def __len__(self):
@@ -202,9 +202,9 @@ def train(train_iterator, val_iterator, device):
             num_total += batch_size
             
             if i % 100 == 0:
-                logger.info("Epoch [%d/%d] %d-th batch: Training accuracy: %.2f, loss: %.2f" % (epoch+1, EPOCHS, i, num_correct/num_total, total_loss/num_total))
+                logger.info("Epoch [%d/%d] %d-th batch: Training accuracy: %.3f, loss: %.3f" % (epoch+1, EPOCHS, i, num_correct/num_total, total_loss/num_total))
             
-        logger.info("Epoch [%d/%d]: Training accuracy: %.2f, loss: %.2f" % (epoch+1, EPOCHS, num_correct/num_total, total_loss/num_total))
+        logger.info("Epoch [%d/%d]: Training accuracy: %.3f, loss: %.3f" % (epoch+1, EPOCHS, num_correct/num_total, total_loss/num_total))
                 
         test(net, val_iterator, criterion, device)
 
@@ -263,12 +263,13 @@ def test(net, iterator, criterion, device):
                         inds.append(j)
                 num_total[topic] += len(inds)
                 inds = np.array(inds)
-                num_correct[topic] += sum(top_pred[inds] == y[inds]).item()
+                #num_correct[topic] += sum(top_pred[inds] == y[inds]).item()
+                num_correct[topic] += sum(top_pred[inds] == y[inds])
             
             if i % 100 == 0:
-                logger.info("%d-th batch: Testing accuracy %.2f, loss: %.2f" % (i, num_correct["all"]/num_total["all"], total_loss/num_total["all"]))
+                logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (i, num_correct["all"]/num_total["all"], total_loss/num_total["all"]))
             
-        logger.info("Overall testing accuracy %.2f, climate testing accuracy %.2f, covid testing accuracy %.2f, military testing accuracy %.2f, loss: %.2f" % (num_correct["all"]/num_total["all"], num_correct["climate"]/num_total["climate"], num_correct["covid"]/num_total["covid"], num_correct["military"]/num_total["military"], total_loss/num_total["all"]))
+        logger.info("Overall testing accuracy %.3f, climate testing accuracy %.3f, covid testing accuracy %.3f, military testing accuracy %.3f, loss: %.3f" % (num_correct["all"]/num_total["all"], num_correct["climate"]/num_total["climate"], num_correct["covid"]/num_total["covid"], num_correct["military"]/num_total["military"], total_loss/num_total["all"]))
                 
     return
 
@@ -290,8 +291,8 @@ if __name__ == '__main__':
     logger.info("Loading training data")
     train_data = TwitterCOMMsDataset(csv_path='../data/train_completed.csv',
                                      img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
-                                    seen_topics=['military', 'climate'],
-                                    few_shot_topic=['covid'])   # took ~one hour to construct the dataset
+                                    seen_topics=['covid', 'climate'],
+                                    few_shot_topic=['military'])   # took ~one hour to construct the dataset
     logger.info(f"Found {train_data.__len__()} items in training data")
     
     logger.info("Loading valid data")
