@@ -272,9 +272,9 @@ if __name__ == '__main__':
 #     tt = TweetTokenizer()
     logger.info("Loading training data")
     train_data = TwitterCOMMsDataset(csv_path='../data/train_completed.csv',
-                                        img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
-                                    seen_topics=['covid', 'climate'],
-                                    few_shot_topic=['military'])   # took ~one hour to construct the dataset
+                                        img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids')#,
+#                                    seen_topics=['covid', 'climate'],
+#                                    few_shot_topic=['military'])   # took ~one hour to construct the dataset
     logger.info(f"Found {train_data.__len__()} items in training data")
     
     logger.info("Loading valid data")

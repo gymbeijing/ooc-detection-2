@@ -23,12 +23,12 @@ import numpy as np
 # setup device to use
 device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
-# model, vis_processors, txt_processors = load_model_and_preprocess(
-#     name = "blip_feature_extractor", model_type="base", is_eval=True, device=device
-# )
+model, vis_processors, txt_processors = load_model_and_preprocess(
+    name = "blip_feature_extractor", model_type="base", is_eval=True, device=device
+)
 
-model, vis_processors, text_processors = load_model_and_preprocess(
-    "blip2_image_text_matching", "pretrain", device=device, is_eval=True)
+# model, vis_processors, text_processors = load_model_and_preprocess(
+#     "blip2_image_text_matching", "pretrain", device=device, is_eval=True)
 
 
 tt = TweetTokenizer()
@@ -60,7 +60,7 @@ def save_tensor(df, img_dir):
 
         raw_image = Image.open(os.path.join(img_dir, img_filename)).convert('RGB')
         image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
-        text_input = text_processors["eval"](caption)
+        text_input = txt_processors["eval"](caption)
         sample = {"image": image, "text_input": [text_input]}   # image shape: [1, 3, 224, 224]
 
         features_multimodal = model.extract_features(sample, mode="multimodal")   # [1, 32, 768] ??? image and text might mismatch
@@ -69,9 +69,9 @@ def save_tensor(df, img_dir):
 
     #     print(os.path.join(img_dir, tensor_filename))
         target_path = os.path.join(img_dir, tensor_filename)
-        if not os.path.exists(target_path):
-            print(os.path.join(img_dir, tensor_filename))
-            torch.save(multimodal_emb, target_path)
+#        if not os.path.exists(target_path):
+        print(os.path.join(img_dir, tensor_filename))
+        torch.save(multimodal_emb, target_path)
 
 
 
