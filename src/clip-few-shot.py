@@ -84,6 +84,7 @@ class TwitterCOMMsDataset(Dataset):
         return re.sub(r'[^\w\s]', '', text)
 
     def __getitem__(self, idx):
+#        print("getitem is called")
         item = self.df.iloc[idx]
         
         topic = item['topic']
@@ -229,6 +230,7 @@ def test(net, iterator, criterion, device):
         num_total["covid"] = 0
         num_correct["military"] = 0
         num_total["military"] = 0
+#        print("batch")
         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
             inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
@@ -301,11 +303,14 @@ if __name__ == '__main__':
     logger.info(f"Found {val_data.__len__()} items in valid data")
     
     BATCH_SIZE = 32
+#    print("dataloader")
     train_iterator = data.DataLoader(train_data, 
                                      shuffle=True, 
+#                                     num_workers=4,
                                      batch_size=BATCH_SIZE)
     val_iterator = data.DataLoader(val_data, 
                                    shuffle=False, 
+#                                   num_workers=4,
                                    batch_size=BATCH_SIZE)
     
     logger.info("Start training the model")

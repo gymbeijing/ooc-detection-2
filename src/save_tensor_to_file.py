@@ -23,13 +23,17 @@ import numpy as np
 # setup device to use
 device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
-model, vis_processors, txt_processors = load_model_and_preprocess(
-    name = "blip_feature_extractor", model_type="base", is_eval=True, device=device
-)
+# model, vis_processors, txt_processors = load_model_and_preprocess(
+#     name = "blip_feature_extractor", model_type="base", is_eval=True, device=device
+# )
 
 # model, vis_processors, text_processors = load_model_and_preprocess(
 #     "blip2_image_text_matching", "pretrain", device=device, is_eval=True)
 
+
+model, vis_processors, txt_processors = load_model_and_preprocess(
+    name = "blip2_feature_extractor", model_type="pretrain", is_eval=True, device=device
+)
 
 tt = TweetTokenizer()
 
