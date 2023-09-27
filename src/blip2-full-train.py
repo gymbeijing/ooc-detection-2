@@ -210,12 +210,12 @@ if __name__ == '__main__':
     
     tt = TweetTokenizer()
     logger.info("Loading training data")
-    train_data = TwitterCOMMsDataset(csv_path='../data/train_completed.csv',
+    train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
                                         img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids')   # took ~one hour to construct the dataset
     logger.info(f"Found {train_data.__len__()} items in training data")
     
     logger.info("Loading valid data")
-    val_data = TwitterCOMMsDataset(csv_path='../data/val_completed.csv', 
+    val_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv', 
                                    img_dir='/import/network-temp/yimengg/data/twitter-comms/images/val_images/val_tweet_image_ids')
     logger.info(f"Found {val_data.__len__()} items in valid data")
     
