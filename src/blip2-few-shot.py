@@ -24,6 +24,7 @@ from nltk.tokenize import TweetTokenizer
 import re, string
 
 import logging
+import argparse
 
 # Logger
 logger = logging.getLogger()
@@ -257,11 +258,22 @@ def test(net, iterator, criterion, device):
     return
 
 
+def parse_args():
+    p = argparse.ArgumentParser()
+    p.add_argument("--few_shot_topic", type=str, required=True, help="topic that will not be included in the training")
+
+    args = p.parse_args()
+    return args
+
+
 if __name__ == '__main__':
 
     # Set up device to use
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     logger.info(device)
+
+    args = parse_args()
+    few_shot_topic = args.few_shot_topic
 
 #     logger.info("Loading the blip 2 model")
 #     # Load the model
@@ -271,14 +283,13 @@ if __name__ == '__main__':
     
 #     tt = TweetTokenizer()
     logger.info("Loading training data")
-    train_data = TwitterCOMMsDataset(csv_path='../data/train_completed.csv',
-                                        img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids')#,
-#                                    seen_topics=['covid', 'climate'],
-#                                    few_shot_topic=['military'])   # took ~one hour to construct the dataset
+    train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
+                                      img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
+                                      few_shot_topic=[few_shot_topic])   # took ~one hour to construct the dataset
     logger.info(f"Found {train_data.__len__()} items in training data")
     
     logger.info("Loading valid data")
-    val_data = TwitterCOMMsDataset(csv_path='../data/val_completed.csv', 
+    val_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
                                    img_dir='/import/network-temp/yimengg/data/twitter-comms/images/val_images/val_tweet_image_ids')
     logger.info(f"Found {val_data.__len__()} items in valid data")
     
