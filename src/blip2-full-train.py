@@ -153,7 +153,7 @@ def train(train_iterator, val_iterator, device):
             num_total += batch_size
             
             if i % 100 == 0:
-                logger.info("Epoch [%d/%d] %d-th batch: Training accuracy: %.2f, loss: %.2f" % (epoch+1, EPOCHS, i, num_correct/num_total, total_loss/num_total))
+                logger.info("Epoch [%d/%d] %d-th batch: Training accuracy: %.3f, loss: %.3f" % (epoch+1, EPOCHS, i, num_correct/num_total, total_loss/num_total))
             
         logger.info("Epoch [%d/%d]: Training accuracy: %.2f, loss: %.2f" % (epoch+1, EPOCHS, num_correct/num_total, total_loss/num_total))
                 
