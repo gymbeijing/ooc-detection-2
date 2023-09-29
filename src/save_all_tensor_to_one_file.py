@@ -3,6 +3,7 @@
 
 import torch
 from torch.utils.data import Dataset
+import torch.utils.data as data
 from PIL import Image
 import requests
 from lavis.models import load_model_and_preprocess
@@ -27,6 +28,8 @@ logging.basicConfig(
     format="[%(asctime)s]:[%(processName)-11s]" + "[%(levelname)-s]:[%(name)s] %(message)s",
 )
 
+tt = TweetTokenizer()
+
 
 class NewsDataset(Dataset):
     def __init__(self, img_dir, df, vis_processors, txt_processors):
@@ -42,26 +45,16 @@ class NewsDataset(Dataset):
         item = self.df.iloc[idx]
         caption = item['full_text']  # original caption
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
-        caption = self.remove_punc(self.remove_URL(caption))  # remove url & punctuation from the tokenized caption
+        caption = self.remove_punc(self.remove_url(caption))  # remove url & punctuation from the tokenized caption
 
         img_filename = item['filename']
-        topic = item['topic']  # e.g. military_hard
-        falsified = int(item['falsified'])  # falsified: 1, not falsified: 0
-        not_falsified = float(not item['falsified'])
-        label = np.array(falsified)
-        domain = topic.split('_')[0]
-        difficulty = topic.split('_')[1]
+        image_path = os.path.join(self.img_dir, img_filename)
 
-        raw_image = Image.open(os.path.join(self.img_dir, img_filename)).convert('RGB')
+        raw_image = Image.open(image_path).convert('RGB')
         image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
         text_input = txt_processors["eval"](caption)
 
-        return {"image": image,
-                "text_input": text_input,
-                "topic": topic,
-                "label": label,
-                "domain": domain,
-                "difficulty": difficulty}
+        return image, text_input, image_path
 
     def remove_url(self, text):
         """Remove URLs from a sample string"""
@@ -83,7 +76,7 @@ def parse_args():
 def get_img_dir_and_df(phase):
     if phase == 'valid':
         val_img_dir = '/import/network-temp/yimengg/data/twitter-comms/images/val_images/val_tweet_image_ids'
-        df_val = pd.read_csv('../data/val_completed.csv', index_col=0)
+        df_val = pd.read_csv('../raw_data/val_completed.csv', index_col=0)
 
         df_val['exists'] = df_val['filename'].apply(
             lambda filename: os.path.exists(os.path.join(val_img_dir, filename)))
@@ -93,7 +86,7 @@ def get_img_dir_and_df(phase):
         return val_img_dir, df_val
     if phase == 'train':
         train_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
-        df_train = pd.read_csv('../data/train_completed.csv', index_col=0)
+        df_train = pd.read_csv('../raw_data/train_completed.csv', index_col=0)
 
         df_train['exists'] = df_train['filename'].apply(
             lambda filename: os.path.exists(os.path.join(train_img_dir, filename)))
@@ -103,6 +96,35 @@ def get_img_dir_and_df(phase):
         return train_img_dir, df_train
 
     return None, None
+
+
+def get_multimodal_feature(dataloader, model):
+    temp_image_path_list = []
+    temp_multimodal_embeds_list = []
+    for i, (batch_image, batch_text_input, batch_image_path) in tqdm(enumerate(dataloader, 0)):
+        batch_image = batch_image.squeeze(dim=1)
+        samples = {"image": batch_image, "text_input": list(batch_text_input)}
+        features_multimodal = model.extract_features(samples, mode="multimodal")
+        multimodal_embeds = features_multimodal.multimodal_embeds[:, 0, :]  # [1, 768]
+
+        temp_image_path_list += list(batch_image_path)
+        temp_multimodal_embeds_list.append(multimodal_embeds.detach().cpu())
+
+    out_tensor = torch.cat(temp_image_path_list, dim=0)
+    out_dict = {image_path: index for index, image_path in enumerate(temp_image_path_list)}
+
+    return out_dict, out_tensor
+
+
+def save_tensor(tensor, dest):
+    torch.save(tensor, dest)
+    return
+
+
+def save_json(json_dict, dest):
+    with open(dest, 'w', encoding='utf8') as fp:
+        json.dump(json_dict, fp, indent=4, ensure_ascii=False, sort_keys=False)
+    return
 
 
 if __name__ == '__main__':
@@ -126,5 +148,18 @@ if __name__ == '__main__':
         name="blip2_feature_extractor", model_type="pretrain", is_eval=True, device=device
     )
 
-    tt = TweetTokenizer()
+    logger.info("Preparing dataset and dataloader")
+    image_text_metadata = NewsDataset(img_dir, df, vis_processors, txt_processors)
+    image_text_metadata_loader = data.DataLoader(image_text_metadata, shuffle=False, batch_size=256)
+
+    logger.info("Getting multimodal feature")
+    image_path_dict, multimodal_feature_tensor = get_multimodal_feature(image_text_metadata_loader, model)
+
+    logger.info("Saving tensor")
+    save_tensor(multimodal_feature_tensor,
+                f'/import/network-temp/yimengg/data/twitter-comms/processed_data/tensor/multimodal_embeds_{phase}.pt')
+    logger.info("Saving dictionary")
+    save_json(image_path_dict,
+              f'/import/network-temp/yimengg/data/twitter-comms/processed_data/metadata/image_path_to_idx_{phase}.json')
+
 
