@@ -161,6 +161,6 @@ if __name__ == '__main__':
                 f'/import/network-temp/yimengg/data/twitter-comms/processed_data/tensor/multimodal_embeds_{phase}.pt')
     logger.info("Saving dictionary")
     save_json(image_path_dict,
-              f'/import/network-temp/yimengg/data/twitter-comms/processed_data/metadata/image_path_to_idx_{phase}.json')
+              f'/import/network-temp/yimengg/data/twitter-comms/processed_data/metadata/idx_to_image_path_{phase}.json')
 
 
