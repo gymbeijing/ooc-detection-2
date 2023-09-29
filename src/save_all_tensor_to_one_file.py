@@ -110,8 +110,9 @@ def get_multimodal_feature(dataloader, model):
         temp_image_path_list += list(batch_image_path)
         temp_multimodal_embeds_list.append(multimodal_embeds.detach().cpu())
 
-    out_dict = {image_path: index for index, image_path in enumerate(temp_image_path_list)}   # image_path unique?
+    out_dict = {index: image_path for index, image_path in enumerate(temp_image_path_list)}   # Caution: image_path not unique
     out_tensor = torch.cat(temp_multimodal_embeds_list, dim=0)
+    assert len(out_dict) == out_tensor.shape[0], "The number of metadata isn't equal to the number of tensors "
 
     return out_dict, out_tensor
 
