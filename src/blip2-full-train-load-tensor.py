@@ -82,7 +82,7 @@ class TwitterCOMMsDataset(Dataset):
 
         image_path = os.path.join(self.img_dir, img_filename)
 
-        assert image_path == self.metadata[idx], "Image path does not match with the metadata"
+        assert image_path == self.metadata[str(idx)], "Image path does not match with the metadata"
         multimodal_emb = self.multimodal_embeds[idx]
 
         return {"multimodal_emb": multimodal_emb,
@@ -159,7 +159,7 @@ def train(train_iterator, val_iterator, device):
                 logger.info("Epoch [%d/%d] %d-th batch: Training accuracy: %.3f, loss: %.3f" % (
                 epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
 
-        logger.info("Epoch [%d/%d]: Training accuracy: %.2f, loss: %.2f" % (
+        logger.info("Epoch [%d/%d]: Training accuracy: %.3f, loss: %.3f" % (
         epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
 
         test(net, val_iterator, criterion, device)
@@ -193,10 +193,10 @@ def test(net, iterator, criterion, device):
             num_total += batch_size
 
             if i % 100 == 0:
-                logger.info("%d-th batch: Testing accuracy %.2f, loss: %.2f" % (
+                logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (
                 i, num_correct / num_total, total_loss / num_total))
 
-        logger.info("Testing accuracy %.2f, loss: %.2f" % (num_correct / num_total, total_loss / num_total))
+        logger.info("Testing accuracy %.3f, loss: %.3f" % (num_correct / num_total, total_loss / num_total))
 
     return
 
