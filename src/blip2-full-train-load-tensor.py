@@ -221,12 +221,10 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading training data")
-    # train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
-    #                                  img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids')  # took ~one hour to construct the dataset
-    train_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
-                                     img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
-                                     multimodal_embeds_path=root_dir+'twitter-comms/processed_data/tensor/multimodal_embeds_valid.pt',
-                                     metadata_path=root_dir+'twitter-comms/processed_data/metadata/idx_to_image_path_valid.json')  # took ~one hour to construct the dataset
+    train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
+                                     img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
+                                     multimodal_embeds_path=root_dir+'twitter-comms/processed_data/tensor/multimodal_embeds_train.pt',
+                                     metadata_path=root_dir+'twitter-comms/processed_data/metadata/idx_to_image_path_train.json')  # took ~one hour to construct the dataset
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
