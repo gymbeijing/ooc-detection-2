@@ -68,6 +68,7 @@ class NewsDataset(Dataset):
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--phase", type=str, required=True, help="train or valid")
+    p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
 
     args = p.parse_args()
     return args
@@ -104,8 +105,17 @@ def get_multimodal_feature(dataloader, model):
     for i, (batch_image, batch_text_input, batch_image_path) in tqdm(enumerate(dataloader, 0)):
         batch_image = batch_image.squeeze(dim=1)
         samples = {"image": batch_image, "text_input": list(batch_text_input)}
-        features_multimodal = model.extract_features(samples, mode="multimodal")
-        multimodal_embeds = features_multimodal.multimodal_embeds[:, 0, :]  # [1, 768]
+        if base_model == 'blip-2':
+            features_multimodal = model.extract_features(samples, mode="multimodal")
+            multimodal_embeds = features_multimodal.multimodal_embeds[:, 0, :]  # [1, 768]
+        elif base_model == 'albef':
+            features_multimodal = model.extract_features(samples)
+            multimodal_embeds = features_multimodal.multimodal_embeds[:, 0, :]  # [1, 768]
+        else:   # base_model == 'clip'
+            features = model.extract_features(samples)
+            features_image = features.image_embeds  # [1, 512]
+            features_text = features.text_embeds  # [1, 512]
+            multimodal_embeds = features_image * features_text   # (? not sure if it's correct, just a placeholder for now)
 
         temp_image_path_list += list(batch_image_path)
         temp_multimodal_embeds_list.append(multimodal_embeds.detach().cpu())
@@ -133,7 +143,10 @@ if __name__ == '__main__':
     # Parse arguments
     args = parse_args()
     phase = args.phase
+    base_model = args.base_model
     logger.info(f'phase: {phase}')
+    logger.info(f'base model: {base_model}')
+    assert base_model == 'clip' or base_model == 'blip-2' or base_model == 'albef', "Please specify a valid base_model."
 
     # Get image directory and dataframe
     img_dir, df = get_img_dir_and_df(phase)
@@ -144,10 +157,21 @@ if __name__ == '__main__':
     logger.info(f'device: {device}')
 
     # Load the model
-    logger.info("Loading blip-2")
-    model, vis_processors, txt_processors = load_model_and_preprocess(
-        name="blip2_feature_extractor", model_type="pretrain", is_eval=True, device=device
-    )
+    if base_model == 'blip-2':
+        logger.info("Loading blip-2")
+        model, vis_processors, txt_processors = load_model_and_preprocess(
+            name="blip2_feature_extractor", model_type="pretrain", is_eval=True, device=device
+        )
+    elif base_model == 'albef':
+        logger.info("Loading albef")
+        model, vis_processors, txt_processors = load_model_and_preprocess(
+            name="albef_feature_extractor", model_type="base", is_eval=True, device=device
+        )
+    else:   # base_model == 'clip'
+        logger.info("Loading clip")
+        model, vis_processors, txt_processors = load_model_and_preprocess(
+            name="clip_feature_extractor", model_type="ViT-B-32", is_eval=True, device=device
+        )
 
     logger.info("Preparing dataset and dataloader")
     image_text_metadata = NewsDataset(img_dir, df, vis_processors, txt_processors)
@@ -157,10 +181,11 @@ if __name__ == '__main__':
     image_path_dict, multimodal_feature_tensor = get_multimodal_feature(image_text_metadata_loader, model)
 
     logger.info("Saving tensor")
+    root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
     save_tensor(multimodal_feature_tensor,
-                f'/import/network-temp/yimengg/data/twitter-comms/processed_data/tensor/multimodal_embeds_{phase}.pt')
+                root_dir+f'tensor/{base_model}_multimodal_embeds_{phase}.pt')
     logger.info("Saving dictionary")
     save_json(image_path_dict,
-              f'/import/network-temp/yimengg/data/twitter-comms/processed_data/metadata/idx_to_image_path_{phase}.json')
+              root_dir+f'metadata/{base_model}_idx_to_image_path_{phase}.json')
 
 
