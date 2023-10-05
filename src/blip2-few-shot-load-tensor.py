@@ -182,7 +182,7 @@ def train(train_iterator, val_iterator, device):
             num_correct += sum(top_pred == y).item()
             num_total += batch_size
 
-            if i % 100 == 0:
+            if i % 1000 == 0:
                 logger.info("Epoch [%d/%d] %d-th batch: training accuracy: %.3f, loss: %.3f" % (
                 epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
 
@@ -248,7 +248,7 @@ def test(net, iterator, criterion, device):
                 inds = np.array(inds)
                 num_correct[topic] += sum(top_pred[inds] == y[inds])
 
-            if i % 100 == 0:
+            if i % 1000 == 0:
                 logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (
                     i, num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
         logger.info("Overall testing accuracy %.3f, climate testing accuracy %.3f, covid testing accuracy %.3f, "
@@ -267,6 +267,7 @@ def parse_args():
     p.add_argument("--epochs", type=int, required=True, help="number of training epochs")
     p.add_argument("--few_shot_topic", type=str, required=True,
                    help="topic that will not be included in the training")
+    p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
 
     args = p.parse_args()
     return args
@@ -279,6 +280,7 @@ if __name__ == '__main__':
     BATCH_SIZE = args.bs
     EPOCHS = args.epochs
     few_shot_topic = args.few_shot_topic
+    base_model = args.base_model
 
     # Set up device to use
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
@@ -287,25 +289,25 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading training data")
-    train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
-                                     img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
-                                     multimodal_embeds_path=root_dir+'twitter-comms/processed_data/tensor/multimodal_embeds_train.pt',
-                                     metadata_path=root_dir+'twitter-comms/processed_data/metadata/idx_to_image_path_train.json',
-                                     few_shot_topic=few_shot_topic
-                                     )  # took ~one hour to construct the dataset
-    # train_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
-    #                                  img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
-    #                                  multimodal_embeds_path=root_dir + 'twitter-comms/processed_data/tensor/multimodal_embeds_valid.pt',
-    #                                  metadata_path=root_dir + 'twitter-comms/processed_data/metadata/idx_to_image_path_valid.json',
+    # train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
+    #                                  img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
+    #                                  multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
+    #                                  metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
     #                                  few_shot_topic=few_shot_topic
-    #                                )   # small sample
+    #                                  )  # took ~one hour to construct the dataset
+    train_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
+                                     img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
+                                     multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
+                                     metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_valid.json',
+                                     few_shot_topic=few_shot_topic
+                                   )   # small sample
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
     val_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
                                    img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
-                                   multimodal_embeds_path=root_dir+'twitter-comms/processed_data/tensor/multimodal_embeds_valid.pt',
-                                   metadata_path=root_dir+'twitter-comms/processed_data/metadata/idx_to_image_path_valid.json'
+                                   multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
+                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_valid.json'
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 
