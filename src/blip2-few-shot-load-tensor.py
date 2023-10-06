@@ -265,7 +265,7 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--bs", type=int, required=True, help="batch size")
     p.add_argument("--epochs", type=int, required=True, help="number of training epochs")
-    p.add_argument("--few_shot_topic", type=str, required=True,
+    p.add_argument("--few_shot_topic", type=str, required=False,
                    help="topic that will not be included in the training")
     p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
 
@@ -281,6 +281,8 @@ if __name__ == '__main__':
     EPOCHS = args.epochs
     few_shot_topic = args.few_shot_topic
     base_model = args.base_model
+    logger.info(f"base model: {base_model}")
+    logger.info(f"few shot topic: {few_shot_topic}")
 
     # Set up device to use
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
@@ -293,7 +295,7 @@ if __name__ == '__main__':
                                      img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
                                      multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
                                      metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
-                                     few_shot_topic=few_shot_topic
+                                     few_shot_topic=[few_shot_topic]
                                      )  # took ~one hour to construct the dataset
     # train_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
     #                                  img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',

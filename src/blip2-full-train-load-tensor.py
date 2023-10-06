@@ -154,7 +154,7 @@ def train(train_iterator, val_iterator, device):
             num_correct += sum(top_pred == y).item()
             num_total += batch_size
 
-            if i % 100 == 0:
+            if i % 1000 == 0:
                 logger.info("Epoch [%d/%d] %d-th batch: Training accuracy: %.3f, loss: %.3f" % (
                 epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
 
@@ -191,7 +191,7 @@ def test(net, iterator, criterion, device):
             num_correct += sum(top_pred == y).item()
             num_total += batch_size
 
-            if i % 100 == 0:
+            if i % 1000 == 0:
                 logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (
                 i, num_correct / num_total, total_loss / num_total))
 
