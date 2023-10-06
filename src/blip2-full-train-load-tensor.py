@@ -127,7 +127,6 @@ def train(train_iterator, val_iterator, device):
     criterion = nn.CrossEntropyLoss()
     criterion.to(device)
 
-    EPOCHS = 2
     for epoch in range(EPOCHS):
         net.train()
         total_loss = 0
@@ -204,6 +203,8 @@ def test(net, iterator, criterion, device):
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--bs", type=int, required=True, help="batch size")
+    p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, or albef}")
+    p.add_argument("--epochs", type=int, required=True, help="number of training epochs")
 
     args = p.parse_args()
     return args
@@ -213,6 +214,8 @@ if __name__ == '__main__':
 
     args = parse_args()
     BATCH_SIZE = args.bs
+    base_model = args.base_model
+    EPOCHS = args.epochs
 
     # Set up device to use
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
@@ -222,16 +225,16 @@ if __name__ == '__main__':
 
     logger.info("Loading training data")
     train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
-                                     img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
-                                     multimodal_embeds_path=root_dir+'twitter-comms/processed_data/tensor/multimodal_embeds_train.pt',
-                                     metadata_path=root_dir+'twitter-comms/processed_data/metadata/idx_to_image_path_train.json')  # took ~one hour to construct the dataset
+                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
+                                     multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
+                                     metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json')  # took ~one hour to construct the dataset
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
     val_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
                                    img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
-                                   multimodal_embeds_path=root_dir+'twitter-comms/processed_data/tensor/multimodal_embeds_valid.pt',
-                                   metadata_path=root_dir+'twitter-comms/processed_data/metadata/idx_to_image_path_valid.json'
+                                   multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
+                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_valid.json'
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 
