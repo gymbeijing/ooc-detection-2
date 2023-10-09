@@ -53,7 +53,7 @@ class TwitterCOMMsDataset(Dataset):
         """
         Args:
             csv_path (string): Path to the {train_completed|val_completed}.csv file.
-            image_folder_dir (string): Directory containing the images
+            img_dir (string): Directory containing the images
         """
         self.df = pd.read_csv(csv_path, index_col=0)
         self.img_dir = img_dir
