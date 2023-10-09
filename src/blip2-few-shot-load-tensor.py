@@ -48,21 +48,23 @@ def load_json(filepath):
 
 
 class TwitterCOMMsDataset(Dataset):
-    def __init__(self, csv_path, img_dir, multimodal_embeds_path, metadata_path, few_shot_topic=[]):
+    def __init__(self, feather_path, img_dir, multimodal_embeds_path, metadata_path, few_shot_topic=[]):
         """
         Args:
-            csv_path (string): Path to the {train_completed|val_completed}.csv file.
+            feather_path (string): Path to the {train|val}_completed_exist.feather file.
             img_dir (string): Directory containing the images
         """
-        self.df = pd.read_csv(csv_path, index_col=0)
+        # self.df = pd.read_csv(csv_path, index_col=0)
         self.img_dir = img_dir
         self.multimodal_embeds = load_tensor(multimodal_embeds_path)
         self.metadata = load_json(metadata_path)
+        #
+        # self.df['exists'] = self.df['filename'].apply(lambda filename: os.path.exists(os.path.join(img_dir, filename)))
+        # delete_row = self.df[self.df["exists"] == False].index
+        # self.df = self.df.drop(delete_row)
+        # self.df = self.df.reset_index(drop=True)   # set index from 0 to len(df)-1, now index<->row number, i.e. df.iloc[row number]=df.iloc[index]
 
-        self.df['exists'] = self.df['filename'].apply(lambda filename: os.path.exists(os.path.join(img_dir, filename)))
-        delete_row = self.df[self.df["exists"] == False].index
-        self.df = self.df.drop(delete_row)
-        self.df = self.df.reset_index(drop=True)   # set index from 0 to len(df)-1, now index<->row number, i.e. df.iloc[row number]=df.iloc[index]
+        self.df = pd.read_feather(feather_path)   # already drop the non-exists
 
         assert len(self.df) == self.multimodal_embeds.shape[0], \
             "The number of news in self.df isn't equal to number of tensor"
@@ -143,6 +145,7 @@ def train(train_iterator, val_iterator, device):
     net.cuda()
     net.train()
     net.weight_init(mean=0, std=0.02)
+    softmax = nn.Softmax(dim=1)
 
     lr = 0.0001
     optimizer = optim.Adam(net.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=1e-5)
@@ -174,7 +177,16 @@ def train(train_iterator, val_iterator, device):
             total_loss += loss.item()
 
             # Compute the number of correct predictions
-            _, top_pred = y_preds.topk(1, 1)
+            # (1) Select the class with a higher predicted score, equiv. to threshold=0.5
+            # _, top_pred = y_preds.topk(1, 1)
+            # y = labels.cpu()
+            # batch_size = y.shape[0]
+            # top_pred = top_pred.cpu().view(batch_size)
+
+            # (2) If the predicted score (col=1) is higher than the threshold
+            top_pred = torch.zeros_like(labels)
+            y_preds = softmax(y_preds)
+            top_pred[y_preds[:, 1] >= threshold] = 1
             y = labels.cpu()
             batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(batch_size)
@@ -226,7 +238,7 @@ def test(net, iterator, criterion, device):
             # Compute the number of correct predictions
             top_pred = torch.zeros_like(labels)
             y_preds = softmax(y_preds)
-            top_pred[y_preds[:, 1] >= 0.5] = 1
+            top_pred[y_preds[:, 1] >= threshold] = 1
             y = labels.cpu()
             batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(batch_size)
@@ -268,6 +280,8 @@ def parse_args():
     p.add_argument("--few_shot_topic", type=str, required=False,
                    help="topic that will not be included in the training")
     p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
+    p.add_argument("--threshold", type=float, required=False, default=0.5,
+                   help="threshold value for making the class prediction")
 
     args = p.parse_args()
     return args
@@ -281,6 +295,7 @@ if __name__ == '__main__':
     EPOCHS = args.epochs
     few_shot_topic = args.few_shot_topic
     base_model = args.base_model
+    threshold = args.threshold
     logger.info(f"base model: {base_model}")
     logger.info(f"few shot topic: {few_shot_topic}")
 
@@ -291,8 +306,8 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading training data")
-    train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
-                                     img_dir='/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids',
+    train_data = TwitterCOMMsDataset(feather_path='../raw_data/train_completed_exist.feather',
+                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
                                      multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
                                      metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
                                      few_shot_topic=[few_shot_topic]
@@ -306,7 +321,7 @@ if __name__ == '__main__':
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
-    val_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
+    val_data = TwitterCOMMsDataset(feather_path='../raw_data/val_completed_exist.feather',
                                    img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
                                    multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
                                    metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_valid.json'
