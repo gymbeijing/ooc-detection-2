@@ -1,30 +1,20 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import torch
-from PIL import Image
-import requests
-from lavis.models import load_model_and_preprocess
-
-from torch import nn
-import pandas as pd
+import argparse
+import json
+import logging
 import os
 
-from tqdm.auto import tqdm, trange
-
-from sklearn.metrics import classification_report
-import json
-
-from torch.utils.data import Dataset
+import numpy as np
+import pandas as pd
+import torch
 import torch.utils.data as data
+from torch import nn
 from torch import optim
 from torch.autograd import Variable
-import numpy as np
-from nltk.tokenize import TweetTokenizer
-import re, string
-
-import logging
-import argparse
+from torch.utils.data import Dataset
+from tqdm.auto import tqdm
 
 # Logger
 logger = logging.getLogger()
@@ -36,14 +26,17 @@ logging.basicConfig(
 # Define the Dataset class
 def load_tensor(filepath):
     tensor = torch.load(filepath)
-
     return tensor
+
+
+def save_tensor(tensor, filepath):
+    torch.save(tensor, filepath)
+    return
 
 
 def load_json(filepath):
     with open(filepath, 'r') as fp:
         json_data = json.load(fp)
-
     return json_data
 
 
@@ -177,13 +170,13 @@ def train(train_iterator, val_iterator, device):
             total_loss += loss.item()
 
             # Compute the number of correct predictions
-            # (1) Select the class with a higher predicted score, equiv. to threshold=0.5
+            # Implementation (1) Select the class with a higher predicted score, equiv. to threshold=0.5
             # _, top_pred = y_preds.topk(1, 1)
             # y = labels.cpu()
             # batch_size = y.shape[0]
             # top_pred = top_pred.cpu().view(batch_size)
 
-            # (2) If the predicted score (col=1) is higher than the threshold
+            # Implementation (2) If the predicted score (col=1) is higher than the threshold
             top_pred = torch.zeros_like(labels)
             y_preds = softmax(y_preds)
             top_pred[y_preds[:, 1] >= threshold] = 1
@@ -201,7 +194,15 @@ def train(train_iterator, val_iterator, device):
         logger.info("Epoch [%d/%d]: training accuracy: %.3f, loss: %.3f" % (
         epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
 
-        test(net, val_iterator, criterion, device)
+        test_pred, test_true = test(net, val_iterator, criterion, device)
+        assert test_pred.shape[0] == len(val_data), "test_pred.shape[0] is not equal to the length of val data"
+        assert test_true.shape[0] == len(val_data), "test_true.shape[0] is not equal to the length of val data"
+
+        if epoch == EPOCHS - 1:
+            save_tensor(test_pred,
+                        root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_pred_fs_{few_shot_topic}_epoch_{epoch}.pt')
+            save_tensor(test_true,
+                        root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_true_fs_{few_shot_topic}_epoch_{epoch}.pt')
 
     return net
 
@@ -223,6 +224,8 @@ def test(net, iterator, criterion, device):
         num_correct["military"] = 0
         num_total["military"] = 0
 
+        y_pred_list = []
+        y_true_list = []
         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
             inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
@@ -240,12 +243,15 @@ def test(net, iterator, criterion, device):
             y_preds = softmax(y_preds)
             top_pred[y_preds[:, 1] >= threshold] = 1
             y = labels.cpu()
-            batch_size = y.shape[0]
-            top_pred = top_pred.cpu().view(batch_size)
+            cur_batch_size = y.shape[0]
+            top_pred = top_pred.cpu().view(cur_batch_size)
+
+            y_pred_list.append(y_preds)   # [bs, 2]?
+            y_true_list.append(y)   # [bs, 2]?
 
             # Compute overall performance
             num_correct["all"] += sum(top_pred == y).item()
-            num_total["all"] += batch_size
+            num_total["all"] += cur_batch_size
 
             # Compute topic-wise performance
             topic_labels = batch["topic"]
@@ -270,7 +276,7 @@ def test(net, iterator, criterion, device):
                                                                     num_correct["military"] / num_total["military"],
                                                                     total_loss / num_total["all"]))
 
-    return
+    return torch.cat(y_pred_list, dim=0), torch.cat(y_true_list, dim=0)
 
 
 def parse_args():
