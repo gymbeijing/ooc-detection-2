@@ -14,6 +14,7 @@ from hdbscan import HDBSCAN
 from umap import UMAP
 import re
 from nltk.tokenize import TweetTokenizer
+import sys
 
 
 # Logger
@@ -23,7 +24,11 @@ logging.basicConfig(
     format="[%(asctime)s]:[%(processName)-11s]" + "[%(levelname)-s]:[%(name)s] %(message)s",
 )
 
+# Tokenizer
 tt = TweetTokenizer()
+
+# # Environment variable
+# os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 def remove_url(text):
@@ -52,7 +57,7 @@ def parse_args():
 
 if __name__ == "__main__":
     param_dict = {"climate": {"min_cluster_size": 400, "cluster_selection_epsilon": 0.56},
-                  "covid": {"min_cluster_size": 1200, "cluster_selection_epsilon": 0.65},
+                  "covid": {"min_cluster_size": 600, "cluster_selection_epsilon": 0.65},
                   "military": {"min_cluster_size": 100, "cluster_selection_epsilon": 0.6}}
     # Parse arguments
     args = parse_args()
@@ -80,8 +85,9 @@ if __name__ == "__main__":
     temp_df = df[df['topic'].str.contains(topic)]
     tweet_texts = temp_df['preprocessed_full_text'].unique().tolist()
 
-    logging.info(f"Model fit and transform documents(len={len(tweet_texts)})")
-    topics, probs = topic_model.fit_transform(tweet_texts)
+    logging.info(f"Model fit and transform documents(len={len(tweet_texts)}, size={sys.getsizeof(tweet_texts)})")
+    # topics, probs = topic_model.fit_transform(tweet_texts[:500000])
+    topic_model = topic_model.fit(tweet_texts)
     logging.info("Get topic info")
     print(topic_model.get_topic_info()[["Topic", "Count", "Name"]])
 
