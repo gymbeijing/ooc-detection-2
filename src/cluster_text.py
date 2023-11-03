@@ -57,7 +57,7 @@ def parse_args():
 
 if __name__ == "__main__":
     param_dict = {"climate": {"min_cluster_size": 400, "cluster_selection_epsilon": 0.56},
-                  "covid": {"min_cluster_size": 600, "cluster_selection_epsilon": 0.65},
+                  "covid": {"min_cluster_size": 800, "cluster_selection_epsilon": 0.65},
                   "military": {"min_cluster_size": 100, "cluster_selection_epsilon": 0.6}}
     # Parse arguments
     args = parse_args()
