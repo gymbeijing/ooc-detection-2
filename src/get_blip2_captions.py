@@ -11,6 +11,7 @@ import argparse
 from torch.utils.data import Dataset
 from tqdm import tqdm
 import torch.utils.data as data
+from utils.helper import save_json
 
 # Logger
 logger = logging.getLogger()
@@ -68,19 +69,17 @@ def get_img_dir_and_df(phase):
 
 def get_image_caption(dataloader, model):
     out_image_caption_list = []
-    temp_image_path_list = []
+    out_image_path_list = []
     for i, (batch_image, batch_image_path) in tqdm(enumerate(dataloader, 0)):
         batch_image = batch_image.squeeze(dim=1)
-        print(batch_image.shape)
         images = {"image": batch_image}
-        generated_image_captions = model.generate(images)
-        out_image_caption_list.append(generated_image_captions)
-        temp_image_path_list += list(batch_image_path)
+        generated_image_captions = model.generate(images, repetition_penalty=10.0, min_length=10)
+        out_image_caption_list += generated_image_captions
+        out_image_path_list += list(batch_image_path)
 
-    out_image_path_dict = {index: image_path for index, image_path in enumerate(temp_image_path_list)}
-    # assert len(out_image_path_dict) == len(out_image_caption_list), "The number of metadata isn't equal to the number of generated captions "
+    assert len(out_image_path_list) == len(out_image_caption_list), "The number of metadata isn't equal to the number of generated captions "
 
-    return out_image_path_dict, out_image_caption_list
+    return out_image_path_list, out_image_caption_list
 
 
 def parse_args():
@@ -115,14 +114,16 @@ if __name__ == "__main__":
     img_dir, df = get_img_dir_and_df(phase)
     logger.info(f'image directory: {img_dir}')
 
-    logger.info("Preparing dataset and dataloader")
-    image_metadata = NewsDataset(img_dir, df[:64], vis_processors)
+    logger.info(f"Preparing dataset and dataloader(len={len(df['filename'].unique())})")
+    image_metadata = NewsDataset(img_dir, df['filename'].unique(), vis_processors)
     image_metadata_loader = data.DataLoader(image_metadata, shuffle=False, batch_size=64)
 
     logger.info("Generating captions")
-    image_path_dict, image_caption_list = get_image_caption(image_metadata_loader, model)
+    image_path_list, image_caption_list = get_image_caption(image_metadata_loader, model)
 
-    print(image_caption_list)
+    root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/metadata/'
+    save_json(image_caption_list, root_dir+f'blip-2_generated_image_caption_{phase}.json')
+    save_json(image_path_list, root_dir + f'unique_image_path_{phase}.json')
 
     # item = val_df.iloc[0]
     # text = item['full_text']  # original caption
