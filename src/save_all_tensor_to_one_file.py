@@ -19,6 +19,7 @@ import re, string
 import numpy as np
 import logging
 import argparse
+from utils.helper import save_tensor, save_json, remove_url, remove_punc
 
 
 # Logger
@@ -125,17 +126,6 @@ def get_multimodal_feature(dataloader, model):
     assert len(out_dict) == out_tensor.shape[0], "The number of metadata isn't equal to the number of tensors "
 
     return out_dict, out_tensor
-
-
-def save_tensor(tensor, dest):
-    torch.save(tensor, dest)
-    return
-
-
-def save_json(json_dict, dest):
-    with open(dest, 'w', encoding='utf8') as fp:
-        json.dump(json_dict, fp, indent=4, ensure_ascii=False, sort_keys=False)
-    return
 
 
 if __name__ == '__main__':

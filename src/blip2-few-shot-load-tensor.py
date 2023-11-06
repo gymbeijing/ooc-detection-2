@@ -16,6 +16,8 @@ from torch.autograd import Variable
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
+from utils.helper import save_tensor, load_tensor, load_json
+
 # Logger
 logger = logging.getLogger()
 logging.basicConfig(
@@ -24,22 +26,6 @@ logging.basicConfig(
 )
 
 # Define the Dataset class
-def load_tensor(filepath):
-    tensor = torch.load(filepath)
-    return tensor
-
-
-def save_tensor(tensor, filepath):
-    torch.save(tensor, filepath)
-    return
-
-
-def load_json(filepath):
-    with open(filepath, 'r') as fp:
-        json_data = json.load(fp)
-    return json_data
-
-
 class TwitterCOMMsDataset(Dataset):
     def __init__(self, feather_path, img_dir, multimodal_embeds_path, metadata_path, few_shot_topic=[]):
         """
