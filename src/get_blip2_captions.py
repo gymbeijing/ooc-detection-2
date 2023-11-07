@@ -22,18 +22,16 @@ logging.basicConfig(
 
 
 class NewsDataset(Dataset):
-    def __init__(self, img_dir, df, vis_processors):
+    def __init__(self, img_dir, arr, vis_processors):
         self.img_dir = img_dir
         self.vis_processors = vis_processors
-        self.df = df
+        self.arr = arr
 
     def __len__(self):
-        return len(self.df)
+        return len(self.arr)
 
     def __getitem__(self, idx):
-        item = self.df.iloc[idx]
-
-        img_filename = item['filename']
+        img_filename = self.arr[idx]
         image_path = os.path.join(self.img_dir, img_filename)
 
         raw_image = Image.open(image_path).convert('RGB')
@@ -45,7 +43,7 @@ class NewsDataset(Dataset):
 def get_img_dir_and_df(phase):
     if phase == 'valid':
         val_img_dir = '/import/network-temp/yimengg/data/twitter-comms/images/val_images/val_tweet_image_ids'
-        df_val = pd.read_csv('../raw_data/val_completed.csv', index_col=0)
+        df_val = pd.read_csv('./raw_data/val_completed.csv', index_col=0)
 
         df_val['exists'] = df_val['filename'].apply(
             lambda filename: os.path.exists(os.path.join(val_img_dir, filename)))
@@ -55,7 +53,7 @@ def get_img_dir_and_df(phase):
         return val_img_dir, df_val
     if phase == 'train':
         train_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
-        df_train = pd.read_csv('../raw_data/train_completed.csv', index_col=0)
+        df_train = pd.read_csv('./raw_data/train_completed.csv', index_col=0)
 
         df_train['exists'] = df_train['filename'].apply(
             lambda filename: os.path.exists(os.path.join(train_img_dir, filename)))
@@ -115,15 +113,18 @@ if __name__ == "__main__":
     logger.info(f'image directory: {img_dir}')
 
     logger.info(f"Preparing dataset and dataloader(len={len(df['filename'].unique())})")
-    image_metadata = NewsDataset(img_dir, df['filename'].unique(), vis_processors)
+    image_metadata = NewsDataset(img_dir, df['filename'].unique(), vis_processors)   # numpy.array
     image_metadata_loader = data.DataLoader(image_metadata, shuffle=False, batch_size=64)
 
     logger.info("Generating captions")
     image_path_list, image_caption_list = get_image_caption(image_metadata_loader, model)
 
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/metadata/'
-    save_json(image_caption_list, root_dir+f'blip-2_generated_image_caption_{phase}.json')
+    logger.info(f"Saving generated captions to {root_dir}blip-2_generated_image_caption_{phase}.json")
+    save_json(image_caption_list, root_dir + f'blip-2_generated_image_caption_{phase}.json')
+    logger.info(f"Saving image filepaths to {root_dir}unique_image_path_{phase}.json")
     save_json(image_path_list, root_dir + f'unique_image_path_{phase}.json')
+    print(image_caption_list[:10])
 
     # item = val_df.iloc[0]
     # text = item['full_text']  # original caption
