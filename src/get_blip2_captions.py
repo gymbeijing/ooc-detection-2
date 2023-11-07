@@ -71,7 +71,7 @@ def get_image_caption(dataloader, model):
     for i, (batch_image, batch_image_path) in tqdm(enumerate(dataloader, 0)):
         batch_image = batch_image.squeeze(dim=1)
         images = {"image": batch_image}
-        generated_image_captions = model.generate(images, repetition_penalty=10.0, min_length=10)
+        generated_image_captions = model.generate(images, repetition_penalty=5.0, length_penalty=2.0)
         out_image_caption_list += generated_image_captions
         out_image_path_list += list(batch_image_path)
 
@@ -100,7 +100,12 @@ if __name__ == "__main__":
 
     # loads BLIP caption base model, with finetuned checkpoints on MSCOCO captioning dataset.
     # this also loads the associated image processors
-    model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
+    # blip-2 captioning
+    model, vis_processors, _ = load_model_and_preprocess(name="blip2_t5", model_type="caption_coco_flant5xl",
+                                                         is_eval=True, device=device)
+    # blip captioning
+    # model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco", is_eval=True,
+    #                                                      device=device)
     # preprocess the image
     # vis_processors stores image transforms for "train" and "eval" (validation / testing / inference)
 
