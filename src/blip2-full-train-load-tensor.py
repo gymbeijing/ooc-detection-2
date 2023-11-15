@@ -116,7 +116,7 @@ class Net(nn.Module):
 
 
 def train(train_iterator, val_iterator, device):
-    net = Net(768)
+    net = Net(768)   # blip-2 multimodal: 768, blip-2 unimodal: 512
     net.cuda()
     net.train()
     net.weight_init(mean=0, std=0.02)
@@ -205,6 +205,7 @@ def parse_args():
     p.add_argument("--bs", type=int, required=True, help="batch size")
     p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, or albef}")
     p.add_argument("--epochs", type=int, required=True, help="number of training epochs")
+    p.add_argument("--mode", type=str, required=True, help="{unimodal, multimodal}")
 
     args = p.parse_args()
     return args
@@ -216,6 +217,7 @@ if __name__ == '__main__':
     BATCH_SIZE = args.bs
     base_model = args.base_model
     EPOCHS = args.epochs
+    mode = args.mode
 
     # Set up device to use
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
@@ -224,17 +226,22 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading training data")
-    train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
-                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
-                                     multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
-                                     metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json')  # took ~one hour to construct the dataset
+    # train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
+    #                                  img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
+    #                                  multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_{mode}_embeds_train.pt',
+    #                                  metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_{mode}_idx_to_image_path_train.json')  # took ~one hour to construct the dataset
+    train_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
+                                   img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
+                                   multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_{mode}_embeds_valid.pt',
+                                   metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_{mode}_idx_to_image_path_valid.json'
+                                   )
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
     val_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
                                    img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
-                                   multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
-                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_valid.json'
+                                   multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_{mode}_embeds_valid.pt',
+                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_{mode}_idx_to_image_path_valid.json'
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 
