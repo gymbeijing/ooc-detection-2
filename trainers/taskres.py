@@ -33,6 +33,9 @@ CUSTOM_TEMPLATES = {
 
 
 def load_clip_to_cpu(cfg):
+    """
+    Load the clip model
+    """
     backbone_name = cfg.MODEL.BACKBONE.NAME
     url = clip._MODELS[backbone_name]
     model_path = clip._download(url)
@@ -51,6 +54,9 @@ def load_clip_to_cpu(cfg):
 
 
 class TextEncoder(nn.Module):
+    """
+    Encode the prompts into embeddings(?)
+    """
     def __init__(self, clip_model):
         super().__init__()
         # Take out clip's components
