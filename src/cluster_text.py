@@ -86,10 +86,15 @@ if __name__ == "__main__":
     tweet_texts = temp_df['preprocessed_full_text'].unique().tolist()
 
     logging.info(f"Model fit and transform documents(len={len(tweet_texts)}, size={sys.getsizeof(tweet_texts)})")
-    # topics, probs = topic_model.fit_transform(tweet_texts[:500000])
-    topic_model = topic_model.fit(tweet_texts)
+    topics, probs = topic_model.fit_transform(tweet_texts)
+    # topic_model = topic_model.fit(tweet_texts)
     logging.info("Get topic info")
-    print(topic_model.get_topic_info()[["Topic", "Count", "Name"]])
+    topic_info = topic_model.get_topic_info()[["Topic", "Count", "Name"]]
+    print(topic_info)
+
+    SAMPLE_SIZE = 1000
+    for i in range(SAMPLE_SIZE):
+        print(f"[News caption]: {tweet_texts[i]}. [Topic label]: {topics[i]}")
 
 
 
