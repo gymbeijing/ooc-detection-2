@@ -18,7 +18,7 @@ from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
 from data.twitter_comms_dataset import TwitterCOMMsDataset
-from model.linearClassifier import Net
+from model.linear_classifier import Net
 
 # Logger
 logger = logging.getLogger()
