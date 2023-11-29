@@ -67,7 +67,7 @@ class TextEncoder(nn.Module):
         self.dtype = clip_model.dtype
 
     def forward(self, prompts, tokenized_prompts):
-        # Prompt embedding + clip's positional embedding
+        # Prompt token embeddings + clip's positional embedding
         x = prompts + self.positional_embedding.type(self.dtype)
         x = x.permute(1, 0, 2)   # NLD -> LND
         x = self.transformer(x)
@@ -75,7 +75,7 @@ class TextEncoder(nn.Module):
         x = self.ln_final(x).type(self.dtype)
 
         # x.shape = [batch_size, n_ctx, transformer.width]   n_ctx is the max. number of tokens in an input sequence
-        x = x[torch.arange(x.shape[0]), tokenized_prompts.argmax(dim=-1)] @ self.text_projection   # for each row, what does argmax refer to?
+        x = x[torch.arange(x.shape[0]), tokenized_prompts.argmax(dim=-1)] @ self.text_projection   # for each row, find the eot's index (eot token id is the highest number)
 
         return x
 
@@ -91,7 +91,7 @@ class TaskResLearner(nn.Module):
         self.text_feature_residuals = nn.Parameter(torch.zeros_like(base_text_features))
 
     def forward(self):
-        return self.base_text_featrues + self.alpha * self.text_feature_residuals
+        return self.base_text_features + self.alpha * self.text_feature_residuals
 
 
 def _get_base_text_features(cfg, classnames, clip_model, text_encoder):
