@@ -18,6 +18,7 @@ from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
 from data.twitter_comms_dataset import TwitterCOMMsDataset
+from model.linear_classifier import Net
 
 # Logger
 logger = logging.getLogger()
@@ -28,28 +29,6 @@ logging.basicConfig(
 
 # Define the Dataset class
 # Use import instead
-
-def normal_init(m, mean, std):
-    if isinstance(m, nn.Linear):
-        m.weight.data.normal_(mean, std)
-        m.bias.data.zero_()
-
-
-class Net(nn.Module):
-    def __init__(self, in_dim, out_dim=2):
-        super(Net, self).__init__()
-
-        self.fc = nn.Linear(in_dim, out_dim)
-        self.in_dim = in_dim
-
-    def forward(self, x):
-        x = x.view(-1, self.in_dim)
-        out = self.fc(x)
-        return out
-
-    def weight_init(self, mean, std):
-        for m in self._modules:
-            normal_init(self._modules[m], mean, std)
 
 
 def train(train_iterator, val_iterator, device):
@@ -231,18 +210,18 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading training data")
-    train_data = TwitterCOMMsDataset(feather_path='../raw_data/train_completed_exist.feather',
-                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
-                                     multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
-                                     metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
-                                     few_shot_topic=[few_shot_topic]
-                                     )  # took ~one hour to construct the dataset
-    # train_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
-    #                                  img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
-    #                                  multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
-    #                                  metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_valid.json',
-    #                                  few_shot_topic=few_shot_topic
-    #                                )   # small sample
+    # train_data = TwitterCOMMsDataset(feather_path='../raw_data/train_completed_exist.feather',
+    #                                  img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
+    #                                  multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
+    #                                  metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
+    #                                  few_shot_topic=[few_shot_topic]
+    #                                  )  # took ~one hour to construct the dataset
+    train_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
+                                     img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
+                                     multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
+                                     metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_valid.json',
+                                     few_shot_topic=few_shot_topic
+                                   )   # small sample
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
