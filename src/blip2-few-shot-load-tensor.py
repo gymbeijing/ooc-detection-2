@@ -216,19 +216,19 @@ if __name__ == '__main__':
     #                                  metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
     #                                  few_shot_topic=[few_shot_topic]
     #                                  )  # took ~one hour to construct the dataset
-    train_data = TwitterCOMMsDataset(feather_path='../raw_data/val_completed_exist.feather',
+    train_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
                                      img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
                                      multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
-                                     metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_valid.json',
+                                     metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_valid.json',
                                      few_shot_topic=few_shot_topic
                                    )   # small sample
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
-    val_data = TwitterCOMMsDataset(feather_path='../raw_data/val_completed_exist.feather',
+    val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
                                    img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
                                    multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
-                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_valid.json'
+                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_valid.json'
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 
