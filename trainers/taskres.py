@@ -119,12 +119,12 @@ def _get_base_text_features(cfg, classnames, clip_model, text_encoder):
     return text_embeddings.to(device)
 
 
-def _get_enhanced_base_text_features(cfg, classnames, clip_model, text_encoder, pretraiend_model):
+def _get_enhanced_base_text_features(cfg, classnames, clip_model, text_encoder, pretrained_model):
     device = next(text_encoder.parameters()).device
     if clip_model.dtype == torch.float16:
         text_encoder = text_encoder.cuda()
 
-        pretrained_text_projection = torch.load(pretraiend_model)
+        pretrained_text_projection = torch.load(pretrained_model)
 
         state_dict = text_encoder.state_dict()
         state_dict['text_projection'] = pretrained_text_projection['state_dict']['weight'].t()

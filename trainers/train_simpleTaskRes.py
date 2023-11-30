@@ -18,7 +18,7 @@ from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
 from data.twitter_comms_dataset import TwitterCOMMsDataset
-from model.linear_classifier import Net
+from model.simpleTaskRes import SimpleTaskResLearner
 
 # Logger
 logger = logging.getLogger()
@@ -32,7 +32,7 @@ logging.basicConfig(
 
 
 def train(train_iterator, val_iterator, device):
-    net = Net(768)
+    net = SimpleTaskResLearner(alpha=alpha, in_dim=768)
     net.cuda()
     net.train()
     net.weight_init(mean=0, std=0.02)
@@ -186,6 +186,8 @@ def parse_args():
     p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
     p.add_argument("--threshold", type=float, required=False, default=0.5,
                    help="threshold value for making the class prediction")
+    p.add_argument("--alpha", type=float, required=False, default=0.5,
+                   help="weight assigned to the residual part")
 
     args = p.parse_args()
     return args
@@ -200,6 +202,7 @@ if __name__ == '__main__':
     few_shot_topic = args.few_shot_topic
     base_model = args.base_model
     threshold = args.threshold
+    alpha = args.alpha
     logger.info(f"base model: {base_model}")
     logger.info(f"few shot topic: {few_shot_topic}")
 
