@@ -1,9 +1,9 @@
 from torch import nn
 
 
-class Net(nn.Module):
+class LinearClassifier(nn.Module):
     def __init__(self, in_dim, out_dim=2):
-        super(Net, self).__init__()
+        super(LinearClassifier, self).__init__()
 
         self.fc = nn.Linear(in_dim, out_dim)
         self.in_dim = in_dim

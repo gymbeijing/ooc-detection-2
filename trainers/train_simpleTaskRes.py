@@ -18,7 +18,13 @@ from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
 from data.twitter_comms_dataset import TwitterCOMMsDataset
-from model.simpleTaskRes import SimpleTaskResLearner
+from model.twoTasks import TwoTasks
+from model.simpleTaskRes import _get_base_text_features
+
+
+CUSTOM_TEMPLATES = {
+    "Twitter-COMMs": "a piece of news in {}."   # {domain}
+}
 
 # Logger
 logger = logging.getLogger()
@@ -32,7 +38,9 @@ logging.basicConfig(
 
 
 def train(train_iterator, val_iterator, device):
-    net = SimpleTaskResLearner(alpha=alpha, in_dim=768)
+    classnames = ["climate", "covid", "military"]
+    base_text_features = _get_base_text_features(classnames)
+    net = TwoTasks(alpha=alpha, in_dim=768, base_text_features=base_text_features)
     net.cuda()
     net.train()
     net.weight_init(mean=0, std=0.02)
@@ -53,12 +61,18 @@ def train(train_iterator, val_iterator, device):
             # Extract batch image and batch text inputs
             inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
+            domain = batch["domain"].to(device)
+
             inputs, labels = Variable(inputs), Variable(labels)
+            domain = Variable(domain)
 
             # Get the output predictions
             net.zero_grad()
-            y_preds = net(inputs)
-            loss = criterion(y_preds, labels)  # cross-entropy loss
+            class_similarity_scores, y_preds = net(inputs)
+
+            domain_loss = criterion(class_similarity_scores, domain)
+            classification_loss = criterion(y_preds, labels)  # cross-entropy loss
+            loss = domain_loss + classification_loss
 
             # Back-propagate and update the parameters
             loss.backward()
@@ -96,12 +110,6 @@ def train(train_iterator, val_iterator, device):
         assert test_pred.shape[0] == len(val_data), "test_pred.shape[0] is not equal to the length of val data"
         assert test_true.shape[0] == len(val_data), "test_true.shape[0] is not equal to the length of val data"
 
-        if epoch == EPOCHS - 1:
-            save_tensor(test_pred,
-                        root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_pred_fs_{few_shot_topic}_epoch_{epoch}.pt')
-            save_tensor(test_true,
-                        root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_true_fs_{few_shot_topic}_epoch_{epoch}.pt')
-
     return net
 
 
@@ -127,11 +135,16 @@ def test(net, iterator, criterion, device):
         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
             inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
+            domain = batch["domain"].to(device)
             inputs, labels = Variable(inputs), Variable(labels)
+            domain = Variable(domain)
 
             # Get the output predictions
-            y_preds = net(inputs)
-            loss = criterion(y_preds, labels)
+            class_similarity_scores, y_preds = net(inputs)
+
+            domain_loss = criterion(class_similarity_scores, domain)
+            classification_loss = criterion(y_preds, labels)
+            loss = domain_loss + classification_loss
 
             # Compute total loss of the current epoch
             total_loss += loss.item()
