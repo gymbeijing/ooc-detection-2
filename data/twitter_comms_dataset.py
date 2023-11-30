@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 import os
 
+CUSTOM_TEMPLATES = {
+    "Twitter-COMMs": "a piece of news in {}."   # {domain}
+}
 
 class TwitterCOMMsDataset(Dataset):
     def __init__(self, feather_path, img_dir, multimodal_embeds_path, metadata_path, few_shot_topic=[]):
@@ -23,6 +26,7 @@ class TwitterCOMMsDataset(Dataset):
         # self.df = self.df.reset_index(drop=True)   # set index from 0 to len(df)-1, now index<->row number, i.e. df.iloc[row number]=df.iloc[index]
 
         self.df = pd.read_feather(feather_path)   # already drop the non-exists
+        self.domain_map = {"climate": 0, "covid": 1, "military": 2}
 
         assert len(self.df) == self.multimodal_embeds.shape[0], \
             "The number of news in self.df isn't equal to number of tensor"
@@ -62,6 +66,7 @@ class TwitterCOMMsDataset(Dataset):
         not_falsified = float(not item['falsified'])
         label = np.array(falsified)
         domain = topic.split('_')[0]
+        domain = self.domain_map[domain]   # turn string to ordinal
         difficulty = topic.split('_')[1]
 
         image_path = os.path.join(self.img_dir, img_filename)
