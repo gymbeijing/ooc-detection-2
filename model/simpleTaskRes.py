@@ -15,6 +15,7 @@ class SimpleTaskResLearner(nn.Module):
         super().__init__()
         self.alpha = alpha
         self.register_buffer("base_prompt_features", base_text_features)
+        self.base_text_features = base_text_features
         # Learnable part
         self.text_feature_residuals = nn.Parameter(torch.zeros_like(base_text_features))
 
@@ -39,9 +40,10 @@ def _get_base_text_features(classnames):
             prompt = [template.format(text) for template in TEMPLATES]
             sample = {"text_input": list(prompt)}
             text_features = model.extract_features(sample, mode="text")
-            text_embeds = text_features.text_embeds[:, 0, :]  # [bs, 256]
-            text_embeddings.append(text_embeds)
+            # print(f"sample: {sample}")
+            # print(f"text_embeds.shape: {text_features.text_embeds.shape}")
+            text_embeds = text_features.text_embeds[:, 0, :]  # [1, 768]
             text_embeddings.append(text_embeds)
 
-    text_embeddings = torch.stack(text_embeddings).mean(1)
+    text_embeddings = torch.stack(text_embeddings).mean(1)   # [3, 768]
     return text_embeddings.to(device)

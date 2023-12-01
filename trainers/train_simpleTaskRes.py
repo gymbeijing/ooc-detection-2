@@ -68,9 +68,10 @@ def train(train_iterator, val_iterator, device):
 
             # Get the output predictions
             net.zero_grad()
-            class_similarity_scores, y_preds = net(inputs)
+            domain_similarity_scores, y_preds = net(inputs)
 
-            domain_loss = criterion(class_similarity_scores, domain)
+            # print(domain_similarity_scores.shape)
+            domain_loss = criterion(domain_similarity_scores, domain)
             classification_loss = criterion(y_preds, labels)  # cross-entropy loss
             loss = domain_loss + classification_loss
 
@@ -100,10 +101,10 @@ def train(train_iterator, val_iterator, device):
             num_total += batch_size
 
             if i % 1000 == 0:
-                logger.info("Epoch [%d/%d] %d-th batch: training accuracy: %.3f, loss: %.3f" % (
+                logger.info("Epoch [%d/%d] %d-th batch: training accuracy: %.3f, loss: %.6f" % (
                 epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
 
-        logger.info("Epoch [%d/%d]: training accuracy: %.3f, loss: %.3f" % (
+        logger.info("Epoch [%d/%d]: training accuracy: %.3f, loss: %.6f" % (
         epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
 
         test_pred, test_true = test(net, val_iterator, criterion, device)
@@ -140,9 +141,9 @@ def test(net, iterator, criterion, device):
             domain = Variable(domain)
 
             # Get the output predictions
-            class_similarity_scores, y_preds = net(inputs)
+            domain_similarity_scores, y_preds = net(inputs)
 
-            domain_loss = criterion(class_similarity_scores, domain)
+            domain_loss = criterion(domain_similarity_scores, domain)
             classification_loss = criterion(y_preds, labels)
             loss = domain_loss + classification_loss
 
@@ -181,7 +182,7 @@ def test(net, iterator, criterion, device):
                 logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (
                     i, num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
         logger.info("Overall testing accuracy %.3f, climate testing accuracy %.3f, covid testing accuracy %.3f, "
-                    "military testing accuracy %.3f, loss: %.3f" % (num_correct["all"] / num_total["all"],
+                    "military testing accuracy %.3f, loss: %.6f" % (num_correct["all"] / num_total["all"],
                                                                     num_correct["climate"] / num_total["climate"],
                                                                     num_correct["covid"] / num_total["covid"],
                                                                     num_correct["military"] / num_total["military"],

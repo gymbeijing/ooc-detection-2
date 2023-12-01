@@ -12,10 +12,13 @@ class TwoTasks(nn.Module):
         self.out_dim = out_dim
 
     def forward(self, x):
-        x = x.view(-1, self.in_dim)
-        class_similarity_scores = self.simple_taskres_learner() @ x.t()   # to be converted to logits
-        out_scores = self.fc(x)
-        return class_similarity_scores, out_scores
+        # x.shape: [bs, 768]
+        # print(f"self.simple_taskres_learner().shape: {self.simple_taskres_learner().shape}")  # [3, 768]
+        # print(f"x.t().shape: {x.t().shape}")   # [768, bs]
+        domain_similarity_scores = self.simple_taskres_learner() @ (x.t())   # to be converted to logits
+        # print(domain_similarity_scores.shape)   # [3, 256]
+        out_scores = self.linear_classifier(x)
+        return domain_similarity_scores.t(), out_scores   # [256, 3], [256, 2]
 
     def weight_init(self, mean, std):
         for m in self._modules:

@@ -18,7 +18,7 @@ from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
 from data.twitter_comms_dataset import TwitterCOMMsDataset
-from model.linearClassifier import Net
+from model.linearClassifier import LinearClassifier
 
 # Logger
 logger = logging.getLogger()
@@ -32,7 +32,7 @@ logging.basicConfig(
 
 
 def train(train_iterator, val_iterator, device):
-    net = Net(768)
+    net = LinearClassifier(768)
     net.cuda()
     net.train()
     net.weight_init(mean=0, std=0.02)
