@@ -11,9 +11,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class SimpleTaskResLearner(nn.Module):
-    def __init__(self, alpha, base_text_features):
+    def __init__(self, cfg, base_text_features):
         super().__init__()
-        self.alpha = alpha
+        self.alpha = cfg.TRAINER.SimpleTaskRes.RESIDUAL_SCALE
         self.register_buffer("base_prompt_features", base_text_features)
         self.base_text_features = base_text_features
         # Learnable part

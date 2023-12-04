@@ -201,11 +201,12 @@ logging.basicConfig(
 class SimpleTaskRes(TrainerX):
     def build_model(self):
         cfg = self.cfg
+        self.device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
         classnames = ["climate", "covid", "military"]
         base_text_features = _get_base_text_features(classnames)
-        self.model = TwoTasks(alpha=alpha, in_dim=768, base_text_features=base_text_features)
-        self.model.to(device)
+        self.model = TwoTasks(cfg=cfg, in_dim=768, base_text_features=base_text_features)
+        self.model.to(self.device)
         self.model.train()
         self.model.weight_init(mean=0, std=0.02)
         softmax = nn.Softmax(dim=1)

@@ -4,9 +4,9 @@ from model.linearClassifier import LinearClassifier, normal_init
 
 
 class TwoTasks(nn.Module):
-    def __init__(self,  alpha, base_text_features, in_dim, out_dim=2):
+    def __init__(self, cfg, base_text_features, in_dim, out_dim=2):
         super().__init__()
-        self.simple_taskres_learner = SimpleTaskResLearner(alpha, base_text_features)
+        self.simple_taskres_learner = SimpleTaskResLearner(cfg, base_text_features)
         self.linear_classifier = LinearClassifier(in_dim, out_dim)
         self.in_dim = in_dim
         self.out_dim = out_dim
