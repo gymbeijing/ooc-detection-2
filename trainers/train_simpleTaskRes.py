@@ -26,6 +26,7 @@ from dassl.engine import TRAINER_REGISTRY, TrainerX
 from dassl.metrics import compute_accuracy
 from dassl.utils import load_pretrained_weights, load_checkpoint
 from dassl.optim import build_optimizer, build_lr_scheduler
+from dassl.data import DataManager
 
 
 CUSTOM_TEMPLATES = {
@@ -200,6 +201,13 @@ logging.basicConfig(
 @TRAINER_REGISTRY.register()
 class SimpleTaskRes(TrainerX):
     def build_model(self):
+        """Build and register model.
+
+        The default builds a classification model along with its
+        optimizer and scheduler.
+
+        Custom trainers can re-implement this method if necessary.
+        """
         cfg = self.cfg
         self.device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
