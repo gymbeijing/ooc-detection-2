@@ -1,29 +1,17 @@
 #!/bin/bash
 
-# custom config
-DATA=/import/network-temp/yimengg/data/
-# DATA=/path/to/datasets
-TRAINER=SimpleTaskRes
 
-DATASET=$1
-CFG=$2      # config file
-SHOTS=$3    # number of shots (1, 2, 4, 8, 16)
-SCALE=$4    # scaling factor alpha
+BATCH_SIZE=$1
+MAX_EPOCHS=$2      # config file
+FEW_SHOT_TOPIC=$3    # number of shots (1, 2, 4, 8, 16)
+BASE_MODEL=$4    # scaling factor alpha
+ALPHA=$5
 
-for SEED in 1
 do
-    DIR=output/${CFG}_${SHOTS}shots/seed${SEED}
-    if [ -d "$DIR" ]; then
-        echo "Oops! The results exist at ${DIR} (so skip this job)"
-    else
-        CUDA_VISIBLE_DEVICES=3 python train.py \
-        --root ${DATA} \
-        --seed ${SEED} \
-        --trainer ${TRAINER} \
-        --dataset-config-file configs/datasets/${DATASET}.yaml \
-        --config-file configs/trainers/${TRAINER}/${CFG}.yaml \
-        --output-dir ${DIR} \
-        DATASET.NUM_SHOTS ${SHOTS} \
-        TRAINER.SimpleTaskRes.RESIDUAL_SCALE ${SCALE}
-    fi
+  python -m trainers.train_simpleTaskRes \
+  --batch_size ${BATCH_SIZE} \
+  --max_epochs ${MAX_EPOCHS} \
+  --few_shot_topic ${FEW_SHOT_TOPIC} \
+  --base_model ${FEW_SHOT_TOPIC} \
+  --alpha ${ALPHA}
 done

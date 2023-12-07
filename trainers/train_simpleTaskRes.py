@@ -18,9 +18,9 @@ from torch.nn import functional as F
 from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
-from dataset.twitter_comms_dataset import TwitterCOMMsDataset, get_dataloader
+from dataset.twitterCOMMsDataset import get_dataloader
 from model.twoTasks import TwoTasks
-from configs import ConfigTwoTasks
+from configs.configTwoTasks import ConfigTwoTasks
 from model.simpleTaskRes import _get_base_text_features
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
