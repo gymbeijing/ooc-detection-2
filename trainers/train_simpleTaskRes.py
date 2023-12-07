@@ -20,6 +20,7 @@ from tqdm.auto import tqdm
 from utils.helper import save_tensor, load_tensor, load_json
 from dataset.twitter_comms_dataset import TwitterCOMMsDataset, get_dataloader
 from model.twoTasks import TwoTasks
+from configs import ConfigTwoTasks
 from model.simpleTaskRes import _get_base_text_features
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
