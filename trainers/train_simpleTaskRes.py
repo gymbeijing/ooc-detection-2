@@ -24,6 +24,9 @@ from configs.configTwoTasks import ConfigTwoTasks
 from model.simpleTaskRes import _get_base_text_features
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import CSVLogger
+import time
+from pathlib import Path
 
 
 CUSTOM_TEMPLATES = {
@@ -36,6 +39,8 @@ logging.basicConfig(
     level=os.environ.get("LOGLEVEL", "INFO"),
     format="[%(asctime)s]:[%(processName)-11s]" + "[%(levelname)-s]:[%(name)s] %(message)s",
 )
+
+torch.set_float32_matmul_precision('high')
 
 # Define the Dataset class
 # Use import instead
@@ -265,14 +270,21 @@ logging.basicConfig(
 #     net = train(train_iterator, val_iterator, device)
 
 
-def main():
+if __name__ == '__main__':
     cfg = ConfigTwoTasks()
     model = TwoTasks(cfg)
+
+    month_day = time.strftime('%m%d')
+    hour_min_second = time.strftime('%H%M%S')
+    csv_logger = CSVLogger("lightning_logs", name=month_day, version=hour_min_second)
+    log_dir = Path(csv_logger.log_dir)
+
     trainer = pl.Trainer(accelerator="gpu",
                          max_epochs=cfg.args.max_epochs,
-                         logger=logger)
+                         logger=csv_logger)
+
     logger.info("Loading training data")
-    train_loader, train_length = get_dataloader(cfg, "train")
+    train_loader, train_length = get_dataloader(cfg, "val")
     logger.info(f"Found {train_length} items in training data")
     logger.info("Loading valid data")
     val_loader, val_length = get_dataloader(cfg, "val")
