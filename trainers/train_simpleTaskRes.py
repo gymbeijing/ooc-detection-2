@@ -18,15 +18,11 @@ from torch.nn import functional as F
 from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
-from data.twitter_comms_dataset import TwitterCOMMsDataset
+from data.twitter_comms_dataset import TwitterCOMMsDataset, get_dataloader
 from model.twoTasks import TwoTasks
 from model.simpleTaskRes import _get_base_text_features
-
-from dassl.engine import TRAINER_REGISTRY, TrainerX
-from dassl.metrics import compute_accuracy
-from dassl.utils import load_pretrained_weights, load_checkpoint
-from dassl.optim import build_optimizer, build_lr_scheduler
-from dassl.data import DataManager
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 CUSTOM_TEMPLATES = {
@@ -198,72 +194,6 @@ logging.basicConfig(
 #     return torch.cat(y_pred_list, dim=0), torch.cat(y_true_list, dim=0)
 
 
-@TRAINER_REGISTRY.register()
-class SimpleTaskRes(TrainerX):
-    def build_model(self):
-        """Build and register model.
-
-        The default builds a classification model along with its
-        optimizer and scheduler.
-
-        Custom trainers can re-implement this method if necessary.
-        """
-        cfg = self.cfg
-        self.device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
-
-        classnames = ["climate", "covid", "military"]
-        base_text_features = _get_base_text_features(classnames)
-        self.model = TwoTasks(cfg=cfg, in_dim=768, base_text_features=base_text_features)
-        self.model.to(self.device)
-        self.model.train()
-        self.model.weight_init(mean=0, std=0.02)
-        softmax = nn.Softmax(dim=1)
-
-        # lr = 0.0001
-        # optimizer = optim.Adam(self.model.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=1e-5)
-        self.optim = build_optimizer(self.model.parameters(), cfg.OPTIM)
-        self.sched = build_lr_scheduler(self.optim, cfg.OPTIM)
-        self.register_model('simple_taskres', self.model, self.optim, self.sched)
-
-        # criterion = nn.CrossEntropyLoss()
-        # criterion.to(device)
-
-    def forward_backward(self, batch):
-        input, label, domain, topic = self.parse_batch_train(batch)
-        domain_similarity_score, y_pred = self.model(input)
-        domain_loss = F.cross_entropy(domain_similarity_score, domain)
-        classification_loss = F.cross_entropy(y_pred, label)
-        loss = domain_loss + classification_loss
-        self.model_backward_and_update(loss)
-
-        indice_covid = (topic=="covid").nonzero().squeeze()
-        indice_climate = (topic=="climate").nonzero().squeeze()
-        indice_military = (topic == "military").nonzero().squeeze()
-
-        loss_summary = {
-            'loss': loss.item(),
-            'acc': compute_accuracy(y_pred, label)[0].item(),
-            'acc_covid': compute_accuracy(y_pred[indice_covid], label[indice_covid])[0].item(),
-            'acc_climate': compute_accuracy(y_pred[indice_climate], label[indice_climate])[0].item(),
-            'acc_military': compute_accuracy(y_pred[indice_military], label[indice_military])[0].item()
-        }
-
-        if (self.batch_idx + 1) == self.num_batches:
-            self.update_lr()
-
-        return loss_summary
-
-    def parse_batch_train(self, batch):
-        input = batch["multimodal_emb"].to(self.device)
-        label = batch["label"].to(self.device)
-        domain = batch["domain"].to(self.device)
-        topic = batch["topic"].to(self.device)
-
-        return input, label, domain, topic
-
-
-
-
 # def parse_args():
 #     p = argparse.ArgumentParser()
 #     p.add_argument("--bs", type=int, required=True, help="batch size")
@@ -332,3 +262,19 @@ class SimpleTaskRes(TrainerX):
 #     logger.info("Start training the model")
 #
 #     net = train(train_iterator, val_iterator, device)
+
+
+def main():
+    cfg = ConfigTwoTasks()
+    model = TwoTasks(cfg)
+    trainer = pl.Trainer(accelerator="gpu",
+                         max_epochs=cfg.args.max_epochs,
+                         logger=logger)
+    logger.info("Loading training data")
+    train_loader, train_length = get_dataloader(cfg, "train")
+    logger.info(f"Found {train_length} items in training data")
+    logger.info("Loading valid data")
+    val_loader, val_length = get_dataloader(cfg, "val")
+    logger.info(f"Found {val_length} items in valid data")
+
+    trainer.fit(model, train_loader, val_loader)
