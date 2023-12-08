@@ -66,8 +66,8 @@ class TwitterCOMMsDataset(Dataset):
         falsified = int(item['falsified'])
         not_falsified = float(not item['falsified'])
         label = np.array(falsified)
-        domain = topic.split('_')[0]
-        domain = self.domain_map_to_idx[domain]   # turn string to ordinal
+        domain_name = topic.split('_')[0]
+        domain_id = self.domain_map_to_idx[domain_name]   # turn string to ordinal
         difficulty = topic.split('_')[1]
 
         image_path = os.path.join(self.img_dir, img_filename)
@@ -78,11 +78,12 @@ class TwitterCOMMsDataset(Dataset):
         return {"multimodal_emb": multimodal_emb,
                 "topic": topic,
                 "label": label,
-                "domain": domain,
+                "domain_id": domain_id,
+                "domain_name": domain_name,
                 "difficulty": difficulty}
 
 
-def get_dataloader(cfg, phase='val'):
+def get_dataloader(cfg, shuffle, phase='val'):
     root_dir = '/import/network-temp/yimengg/data/'
     if phase=='train':
         train_data = TwitterCOMMsDataset(feather_path='../raw_data/train_completed_exist.feather',
@@ -91,7 +92,7 @@ def get_dataloader(cfg, phase='val'):
                                          metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
                                          few_shot_topic=[cfg.args.few_shot_topic])  # took ~one hour to construct the dataset
         train_iterator = data.DataLoader(train_data,
-                                         shuffle=True,
+                                         shuffle=shuffle,
                                          batch_size=cfg.args.batch_size)
         return train_iterator, train_data.__len__()
     else:   # phase=='val'
@@ -101,6 +102,6 @@ def get_dataloader(cfg, phase='val'):
                                        metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_multimodal_idx_to_image_path_valid.json'
                                        )
         val_iterator = data.DataLoader(val_data,
-                                       shuffle=False,
+                                       shuffle=shuffle,
                                        batch_size=cfg.args.batch_size)
         return val_iterator, val_data.__len__()

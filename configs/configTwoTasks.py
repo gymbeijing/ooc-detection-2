@@ -22,8 +22,8 @@ def parse():
     p.add_argument("--few_shot_topic", type=str, required=False,
                        help="topic that will not be included in the training")
     p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
-    # p.add_argument("--threshold", type=float, required=False, default=0.5,
-    #                    help="threshold value for making the class prediction")
+    p.add_argument("--threshold", type=float, required=False, default=0.5,
+                       help="threshold value for making the class prediction")
     p.add_argument("--alpha", type=float, required=False, default=0.5,
                        help="weight assigned to the residual part")
 
