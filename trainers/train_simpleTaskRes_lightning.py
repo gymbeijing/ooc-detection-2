@@ -19,7 +19,7 @@ from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
 from dataset.twitterCOMMsDataset import get_dataloader
-from model.twoTasks import TwoTasks
+from model.twoTasks import TwoTasksLightning
 from configs.configTwoTasks import ConfigTwoTasks
 from model.simpleTaskRes import _get_base_text_features
 import pytorch_lightning as pl
@@ -272,7 +272,7 @@ torch.set_float32_matmul_precision('high')
 
 if __name__ == '__main__':
     cfg = ConfigTwoTasks()
-    model = TwoTasks(cfg)
+    model = TwoTasksLightning(cfg)
 
     month_day = time.strftime('%m%d')
     hour_min_second = time.strftime('%H%M%S')
@@ -285,7 +285,7 @@ if __name__ == '__main__':
                          num_sanity_val_steps=0)
 
     logger.info("Loading training data")
-    train_loader, train_length = get_dataloader(cfg, shuffle=True, phase="val")
+    train_loader, train_length = get_dataloader(cfg, shuffle=True, phase="train")
     logger.info(f"Found {train_length} items in training data")
     logger.info("Loading valid data")
     val_loader, val_length = get_dataloader(cfg, shuffle=False, phase="val")

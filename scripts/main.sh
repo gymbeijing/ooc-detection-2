@@ -8,7 +8,7 @@ BASE_MODEL=$4    # scaling factor alpha
 ALPHA=$5
 
 
-python -m trainers.train_simpleTaskRes \
+python -m trainers.train_simpleTaskRes_lightning \
   --batch_size ${BATCH_SIZE} \
   --max_epochs ${MAX_EPOCHS} \
   --few_shot_topic ${FEW_SHOT_TOPIC} \
