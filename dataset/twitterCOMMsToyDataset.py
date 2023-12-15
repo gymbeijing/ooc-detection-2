@@ -66,7 +66,7 @@ if __name__ == "__main__":
     toy_dataset_size = args.toy_dataset_size
 
     root_dir = '/import/network-temp/yimengg/data/'
-    train_data = TwitterCOMMsToyDataset(feather_path='../raw_data/train_completed_exist.feather',
+    train_data = TwitterCOMMsToyDataset(feather_path='./raw_data/train_completed_exist.feather',
                                      img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
                                      multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
                                      metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
