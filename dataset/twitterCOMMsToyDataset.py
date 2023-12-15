@@ -4,13 +4,12 @@ import pandas as pd
 import numpy as np
 import os
 import torch.utils.data as data
+import argparse
+from tqdm.auto import tqdm
 
-CUSTOM_TEMPLATES = {
-    "Twitter-COMMs": "a piece of news in {}."   # {domain}
-}
 
-class TwitterCOMMsDataset(Dataset):
-    def __init__(self, feather_path, img_dir, multimodal_embeds_path, metadata_path, few_shot_topic=[]):
+class TwitterCOMMsToyDataset(Dataset):
+    def __init__(self, feather_path, img_dir, multimodal_embeds_path, metadata_path, size=30000):
         """
         Args:
             feather_path (string): Path to the {train|val}_completed_exist.feather file.
@@ -26,7 +25,7 @@ class TwitterCOMMsDataset(Dataset):
         # self.df = self.df.drop(delete_row)
         # self.df = self.df.reset_index(drop=True)   # set index from 0 to len(df)-1, now index<->row number, i.e. df.iloc[row number]=df.iloc[index]
 
-        self.df = pd.read_feather(feather_path)   # already drop the non-exists
+        self.df = pd.read_feather(feather_path)[:256]   # already drop the non-exists
         self.domain_map_to_idx = {"climate": 0, "covid": 1, "military": 2}
 
         assert len(self.df) == self.multimodal_embeds.shape[0], \
@@ -35,83 +34,58 @@ class TwitterCOMMsDataset(Dataset):
         # if not excluding any topic
         self.row_kept = self.df.index
 
-        # Remove news of the few shot topic
-        if 'military' in few_shot_topic:
-            self.df['is_military'] = self.df['topic'].apply(lambda topic: 'military' in topic)
-            row_excluded = self.df[self.df["is_military"] == True].index
-            row_all = self.df.index
-            self.row_kept = row_all.difference(row_excluded)
-
-        if 'covid' in few_shot_topic:
-            self.df['is_covid'] = self.df['topic'].apply(lambda topic: 'covid' in topic)
-            row_excluded = self.df[self.df["is_covid"] == True].index
-            row_all = self.df.index
-            self.row_kept = row_all.difference(row_excluded)
-
-        if 'climate' in few_shot_topic:
-            self.df['is_climate'] = self.df['topic'].apply(lambda topic: 'climate' in topic)
-            row_excluded = self.df[self.df["is_climate"] == True].index
-            row_all = self.df.index
-            self.row_kept = row_all.difference(row_excluded)
+        # Randomly sample n=size number of news
+        self.row_kept_sampled = self.row_kept.sample(n=size)
 
     def __len__(self):
-        return len(self.row_kept)
+        return len(self.row_kept_sampled)
 
     def __getitem__(self, idx):
-        row_number = self.row_kept[idx]
+        row_number = self.row_kept_sampled[idx]
         item = self.df.iloc[row_number]
-
-        img_filename = item['filename']
-        topic = item['topic']
-        falsified = int(item['falsified'])
-        not_falsified = float(not item['falsified'])
-        label = np.array(falsified)
-        domain_name = topic.split('_')[0]
-        domain_id = self.domain_map_to_idx[domain_name]   # turn string to ordinal
-        difficulty = topic.split('_')[1]
-
-        image_path = os.path.join(self.img_dir, img_filename)
-
-        assert image_path == self.metadata[str(row_number)], "Image path does not match with the metadata"
         multimodal_emb = self.multimodal_embeds[row_number]
 
-        return {"multimodal_emb": multimodal_emb,
-                "topic": topic,
-                "label": label,
-                "domain_id": domain_id,
-                "domain_name": domain_name,
-                "difficulty": difficulty}
+        return {"item": item,
+                "multimodal_emb": multimodal_emb}
 
 
-def get_dataloader(cfg, shuffle, phase='val'):
+def parse_args():
+    p = argparse.ArgumentParser()
+    p.add_argument("--bs", type=int, required=True, help="batch size")
+    p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
+    p.add_argument("--toy_dataset_size", type=int, required=True, help="size of the toy dataset")
+
+    args = p.parse_args()
+    return args
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    batch_size = args.bs
+    base_model = args.base_model
+    toy_dataset_size = args.toy_dataset_size
+
     root_dir = '/import/network-temp/yimengg/data/'
-    if phase=='train':
-        # train_data = TwitterCOMMsDataset(feather_path='../raw_data/train_completed_exist.feather',
-        #                                  img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
-        #                                  multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_train.pt',
-        #                                  metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
-        #                                  few_shot_topic=[cfg.args.few_shot_topic])  # took ~one hour to construct the dataset
-        # train_iterator = data.DataLoader(train_data,
-        #                                  shuffle=shuffle,
-        #                                  batch_size=cfg.args.batch_size)
-        # return train_iterator, train_data.__len__()
-        val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
-                                       img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
-                                       multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
-                                       metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_multimodal_idx_to_image_path_valid.json',
-                                       few_shot_topic=[cfg.args.few_shot_topic]
-                                       )
-        val_iterator = data.DataLoader(val_data,
-                                       shuffle=shuffle,
-                                       batch_size=cfg.args.batch_size)
-        return val_iterator, val_data.__len__()
-    else:   # phase=='val'
-        val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
-                                       img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
-                                       multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
-                                       metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_multimodal_idx_to_image_path_valid.json',
-                                       )
-        val_iterator = data.DataLoader(val_data,
-                                       shuffle=shuffle,
-                                       batch_size=cfg.args.batch_size)
-        return val_iterator, val_data.__len__()
+    train_data = TwitterCOMMsToyDataset(feather_path='../raw_data/train_completed_exist.feather',
+                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
+                                     multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
+                                     metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
+                                     size=toy_dataset_size)  # took ~one hour to construct the dataset
+    train_iterator = data.DataLoader(train_data,
+                                     shuffle=False,
+                                     batch_size=batch_size)
+
+    list_pd_series = []
+    list_tensor = []
+    for batch_idx, batch in tqdm(enumerate(train_iterator, 0), desc='iterations'):
+        multimodal_emb = batch["multimodal_emb"]
+        item = batch["item"]
+        print(type(item))
+        print(type(multimodal_emb))
+
+        list_pd_series += item
+        list_tensor += multimodal_emb
+
+    col_names = ['id', 'full_text', 'image_id', 'filename', 'falsified', 'topic', 'exists']
+    toy_df = pd.DataFrame(list_pd_series, columns=col_names)
+

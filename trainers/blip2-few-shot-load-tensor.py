@@ -17,7 +17,7 @@ from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
-from data.twitter_comms_dataset import TwitterCOMMsDataset
+from dataset.twitterCOMMsDataset import TwitterCOMMsDataset
 from model.linearClassifier import LinearClassifier
 
 # Logger
