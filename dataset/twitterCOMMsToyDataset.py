@@ -88,4 +88,5 @@ if __name__ == "__main__":
 
     col_names = ['id', 'full_text', 'image_id', 'filename', 'falsified', 'topic', 'exists']
     toy_df = pd.DataFrame(list_pd_series, columns=col_names)
+    print(toy_df.head(5))
 
