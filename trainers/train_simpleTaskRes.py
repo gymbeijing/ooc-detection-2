@@ -225,20 +225,20 @@ def test(iterator, criterion, device):
     return torch.cat(y_pred_list, dim=0), torch.cat(y_true_list, dim=0)
 
 
-def parse_args():
-    p = argparse.ArgumentParser()
-    p.add_argument("--bs", type=int, required=True, help="batch size")
-    p.add_argument("--epochs", type=int, required=True, help="number of training epochs")
-    p.add_argument("--few_shot_topic", type=str, required=False,
-                   help="topic that will not be included in the training")
-    p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
-    p.add_argument("--threshold", type=float, required=False, default=0.5,
-                   help="threshold value for making the class prediction")
-    p.add_argument("--alpha", type=float, required=False, default=0.5,
-                   help="weight assigned to the residual part")
-
-    args = p.parse_args()
-    return args
+# def parse_args():
+#     p = argparse.ArgumentParser()
+#     p.add_argument("--bs", type=int, required=True, help="batch size")
+#     p.add_argument("--epochs", type=int, required=True, help="number of training epochs")
+#     p.add_argument("--few_shot_topic", type=str, required=False,
+#                    help="topic that will not be included in the training")
+#     p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
+#     p.add_argument("--threshold", type=float, required=False, default=0.5,
+#                    help="threshold value for making the class prediction")
+#     p.add_argument("--alpha", type=float, required=False, default=0.5,
+#                    help="weight assigned to the residual part")
+#
+#     args = p.parse_args()
+#     return args
 
 
 if __name__ == '__main__':
