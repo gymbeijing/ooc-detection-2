@@ -45,6 +45,8 @@ class TwitterCOMMsToyDataset(Dataset):
                 "filename": item["filename"],
                 "falsified": item["falsified"],
                 "topic": item["topic"]}
+        image_path = os.path.join(self.img_dir, item["filename"])
+        assert image_path == self.metadata[str(row_number)], "Image path does not match with the metadata"
 
         return {"cols": cols,
                 "multimodal_emb": multimodal_emb}

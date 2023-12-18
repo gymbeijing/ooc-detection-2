@@ -10,7 +10,7 @@ CUSTOM_TEMPLATES = {
 }
 
 class TwitterCOMMsDataset(Dataset):
-    def __init__(self, feather_path, img_dir, multimodal_embeds_path, metadata_path, few_shot_topic=[]):
+    def __init__(self, feather_path, img_dir, multimodal_embeds_path, metadata_path, few_shot_topic=[], mode="train/val"):
         """
         Args:
             feather_path (string): Path to the {train|val}_completed_exist.feather file.
@@ -28,6 +28,7 @@ class TwitterCOMMsDataset(Dataset):
 
         self.df = pd.read_feather(feather_path)   # already drop the non-exists
         self.domain_map_to_idx = {"climate": 0, "covid": 1, "military": 2}
+        self.mode = mode
 
         assert len(self.df) == self.multimodal_embeds.shape[0], \
             "The number of news in self.df isn't equal to number of tensor"
@@ -54,6 +55,10 @@ class TwitterCOMMsDataset(Dataset):
             row_all = self.df.index
             self.row_kept = row_all.difference(row_excluded)
 
+        self.df['is_cross'] = self.df['topic'].apply(lambda topic: 'cross' in topic)
+        row_excluded = self.df[self.df["is_cross"] == True].index
+        self.row_kept = self.row_kept.difference(row_excluded)
+
     def __len__(self):
         return len(self.row_kept)
 
@@ -72,7 +77,8 @@ class TwitterCOMMsDataset(Dataset):
 
         image_path = os.path.join(self.img_dir, img_filename)
 
-        assert image_path == self.metadata[str(row_number)], "Image path does not match with the metadata"
+        if self.mode != "toy":
+            assert image_path == self.metadata[str(row_number)], "Image path does not match with the metadata"
         multimodal_emb = self.multimodal_embeds[row_number]
 
         return {"multimodal_emb": multimodal_emb,
@@ -95,16 +101,17 @@ def get_dataloader(cfg, shuffle, phase='val'):
         #                                  shuffle=shuffle,
         #                                  batch_size=cfg.args.batch_size)
         # return train_iterator, train_data.__len__()
-        val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
-                                       img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
-                                       multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
-                                       metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_multimodal_idx_to_image_path_valid.json',
-                                       few_shot_topic=[cfg.args.few_shot_topic]
+        toy_data = TwitterCOMMsDataset(feather_path='./raw_data/toy_completed_exist.feather',
+                                       img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
+                                       multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy.pt',
+                                       metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
+                                       few_shot_topic=[cfg.args.few_shot_topic],
+                                       mode="toy"
                                        )
-        val_iterator = data.DataLoader(val_data,
+        toy_iterator = data.DataLoader(toy_data,
                                        shuffle=shuffle,
                                        batch_size=cfg.args.batch_size)
-        return val_iterator, val_data.__len__()
+        return toy_iterator, toy_data.__len__()
     else:   # phase=='val'
         val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
                                        img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
