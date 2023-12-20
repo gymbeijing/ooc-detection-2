@@ -62,7 +62,7 @@ class SimCLRContrastiveLoss(nn.Module):
 class ContrastiveLearningModule(nn.Module):
     def __init__(self, model, mlp, loss_type, logger, device, lambda_w):
         super().__init__()
-        self.model = model
+        self.model = model   # roberta
         self.mlp = mlp
         self.loss_type = loss_type
         self.logger = logger
@@ -75,6 +75,7 @@ class ContrastiveLearningModule(nn.Module):
 
         batch_size = src_texts.shape[0]
 
+        # (1) Compute LCE loss
         # source
         # ori
         src_output_dic = self.model(src_texts, attention_mask=src_masks, labels=src_labels)
@@ -93,7 +94,7 @@ class ContrastiveLearningModule(nn.Module):
         tgt_output_dic_perturbed = self.model(tgt_texts_perturb, attention_mask=tgt_masks_perturb, labels=tgt_labels)
         tgt_LCE_perturb, tgt_logits_perturb = tgt_output_dic_perturbed["loss"], tgt_output_dic_perturbed["logits"]
 
-        # Contrastive losses (simclr supported now)
+        # (2) Compute Contrastive losses (simclr supported now)
 
         if self.loss_type == "simclr":
             ctr_loss = SimCLRContrastiveLoss(batch_size=batch_size)
@@ -108,7 +109,7 @@ class ContrastiveLearningModule(nn.Module):
             tgt_lctr = ctr_loss(tgt_z_i, tgt_z_j)
 
         # Full loss
-
+        # (3) Compute MMD loss
         mmd = MMD(src_z_i, tgt_z_i, kernel='rbf')
 
         use_ce_perturb = True

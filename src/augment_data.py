@@ -137,10 +137,10 @@ def augment_dataset(data_frame, percentage=0.2):
         augmented_article = ". ".join(new_sent)
 
         augmented_dataset.append([article.full_text, augmented_article, article.image_id,
-                                  article.filename, article.falsified, article.topic])
+                                  article.filename, article.falsified, article.topic, article.exists])
 
     augmented_frame = pd.DataFrame(augmented_dataset, columns=["full_text", "full_text_perturb", "image_id",
-                                                               "filename", "falsified", "topic"])
+                                                               "filename", "falsified", "topic", "exists"])
 
     # jsonl_data = augmented_frame.to_json(orient='records', lines=True)
 

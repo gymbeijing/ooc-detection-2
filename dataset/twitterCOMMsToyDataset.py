@@ -44,7 +44,8 @@ class TwitterCOMMsToyDataset(Dataset):
                 "image_id": str(item["image_id"]),
                 "filename": item["filename"],
                 "falsified": item["falsified"],
-                "topic": item["topic"]}
+                "topic": item["topic"],
+                "exists": item["exists"]}
         image_path = os.path.join(self.img_dir, item["filename"])
         assert image_path == self.metadata[str(row_number)], "Image path does not match with the metadata"
 
@@ -79,7 +80,7 @@ if __name__ == "__main__":
                                      batch_size=batch_size)
 
     list_tensor = []
-    col_dict = {"id": [], "full_text": [], "image_id": [], "filename": [], "falsified": [], "topic": []}
+    col_dict = {"id": [], "full_text": [], "image_id": [], "filename": [], "falsified": [], "topic": [], "exists": []}
     for batch_idx, batch in tqdm(enumerate(train_iterator, 0), desc='iterations'):
         multimodal_emb = batch["multimodal_emb"]
         cols = batch["cols"]
@@ -92,9 +93,11 @@ if __name__ == "__main__":
         col_dict["filename"] += cols["filename"]
         col_dict["falsified"] += cols["falsified"]
         col_dict["topic"] += cols["topic"]
+        col_dict["exists"] += cols["exists"]
         list_tensor += multimodal_emb
 
     col_dict["falsified"] = [bool(item) for item in col_dict["falsified"]]   # torch.bool -> bool
+    col_dict["exists"] = [bool(item) for item in col_dict["exists"]]  # torch.bool -> bool
 
     # print(col_dict)
     toy_tensor = torch.stack(list_tensor, dim=0)

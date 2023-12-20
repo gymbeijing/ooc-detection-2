@@ -44,7 +44,7 @@ class NewsDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.df.iloc[idx]
-        caption = item['full_text']  # original caption
+        caption = item['full_text_perturb']  # original caption
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
         caption = remove_punc(remove_url(caption))  # remove url & punctuation from the tokenized caption
 
@@ -89,6 +89,11 @@ def get_img_dir_and_df(phase):
         df_train = df_train.drop(delete_row)
 
         return train_img_dir, df_train
+    if phase == 'toy':
+        toy_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
+        df_toy = pd.read_feather('./raw_data/toy_completed_exist_augmented.feather')
+
+        return toy_img_dir, df_toy
 
     return None, None
 
