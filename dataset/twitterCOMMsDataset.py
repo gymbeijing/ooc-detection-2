@@ -40,20 +40,23 @@ class TwitterCOMMsDataset(Dataset):
         if 'military' in few_shot_topic:
             self.df['is_military'] = self.df['topic'].apply(lambda topic: 'military' in topic)
             row_excluded = self.df[self.df["is_military"] == True].index
-            row_all = self.df.index
-            self.row_kept = row_all.difference(row_excluded)
+            # row_all = self.df.index
+            # self.row_kept = row_all.difference(row_excluded)
+            self.row_kept = self.row_kept.difference(row_excluded)
 
         if 'covid' in few_shot_topic:
             self.df['is_covid'] = self.df['topic'].apply(lambda topic: 'covid' in topic)
             row_excluded = self.df[self.df["is_covid"] == True].index
-            row_all = self.df.index
-            self.row_kept = row_all.difference(row_excluded)
+            # row_all = self.df.index
+            # self.row_kept = row_all.difference(row_excluded)
+            self.row_kept = self.row_kept.difference(row_excluded)
 
         if 'climate' in few_shot_topic:
             self.df['is_climate'] = self.df['topic'].apply(lambda topic: 'climate' in topic)
             row_excluded = self.df[self.df["is_climate"] == True].index
-            row_all = self.df.index
-            self.row_kept = row_all.difference(row_excluded)
+            # row_all = self.df.index
+            # self.row_kept = row_all.difference(row_excluded)
+            self.row_kept = self.row_kept.difference(row_excluded)
 
         self.df['is_cross'] = self.df['topic'].apply(lambda topic: 'cross' in topic)
         row_excluded = self.df[self.df["is_cross"] == True].index

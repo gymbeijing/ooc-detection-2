@@ -5,6 +5,7 @@ from collections import namedtuple
 from mmd_code import MMD
 
 
+# (1) MLP in the figure
 class ProjectionMLP(nn.Module):
     """
     Model to project [CLS] representation onto
@@ -20,10 +21,53 @@ class ProjectionMLP(nn.Module):
         )
 
     def forward(self, input_features):
-        x = input_features[:, 0, :]
-        return self.layers(x)
+        # input_features: [bs, 768], previously from [:, 0, :]
+        # x = input_features[:, 0, :]
+        return self.layers(input_features)
 
 
+# (2) Classifier in the figure
+class MLLMClassificationHead(nn.Module):
+    """
+    A classifier following the MLLM embedding
+    """
+    def __init__(self, cfg):
+        super().__init__()
+        self.dense = nn.Linear(cfg.hidden_size, cfg.hidden_size)
+        classifier_dropout = (
+            cfg.classifier_dropout if cfg.classifier_dropout is not None else cfg.hidden_dropout_prob
+        )
+        self.dropout = nn.Dropout(classifier_dropout)
+        self.out_proj = nn.Linear(cfg.hidden_size, cfg.num_labels)
+        self.soft_max = nn.Softmax(dim=1)
+
+    def forward(self, features):
+        """
+        Return the logits
+        """
+        # features: [bs, 768], previously from [:, 0, :]
+        # x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+        x = self.dropout(features)
+        x = self.dense(x)
+        x = torch.tanh(x)
+        x = self.dropout(x)
+        x = self.out_proj(x)
+        logits = x
+        return logits
+
+    # L_CE loss in the figure
+    def compute_loss(self, logits, labels):
+        # logits is the forward() output
+        loss_fct = nn.CrossEntropyLoss()
+        loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+        return loss
+
+    def compute_softmax_logits(self, logits):
+        softmax_logits = self.soft_max(logits)
+        return softmax_logits
+
+
+# (3a) L_CTR in the figure
 class SimCLRContrastiveLoss(nn.Module):
     """
     SimCLR style contrastive loss
@@ -59,40 +103,40 @@ class SimCLRContrastiveLoss(nn.Module):
         return loss
 
 
+# (3b) The overall model
 class ContrastiveLearningModule(nn.Module):
     def __init__(self, model, mlp, loss_type, logger, device, lambda_w):
+        # model, mlp is initialized outside
         super().__init__()
-        self.model = model   # roberta
-        self.mlp = mlp
-        self.loss_type = loss_type
+        self.model = model   # RobertaForContrastiveLearning in the original paper, here is MLLMClassificationHead
+        self.mlp = mlp   # Projection mlp
+        self.loss_type = loss_type   # "simclr"
         self.logger = logger
-        self.device = device
+        self.device = device   # device
         self.lambda_w = lambda_w
 
-    def forward(self, src_texts, src_masks, src_texts_perturb, src_masks_perturb,
-                tgt_texts, tgt_masks, tgt_texts_perturb, tgt_masks_perturb,
-                src_labels, tgt_labels):
+    def forward(self, src_emb, src_perturb_emb, tgt_emb, tgt_perturb_emb, src_labels, tgt_labels):
 
-        batch_size = src_texts.shape[0]
+        batch_size = src_emb.shape[0]
 
-        # (1) Compute LCE loss
+        # (1) Compute L_CE loss
         # source
         # ori
-        src_output_dic = self.model(src_texts, attention_mask=src_masks, labels=src_labels)
-        src_LCE_real, src_logits_real = src_output_dic["loss"], src_output_dic["logits"]
+        src_logits = self.model(src_emb)
+        src_LCE_real, src_logits_real = self.model.compute_loss(src_logits, src_labels), self.model.compute_softmax_logits(src_logits)
 
         # perturb
-        src_output_dic_perturbed = self.model(src_texts_perturb, attention_mask=src_masks_perturb, labels=src_labels)
-        src_LCE_perturb, src_logits_perturb = src_output_dic_perturbed["loss"], src_output_dic_perturbed["logits"]
+        src_perturb_logits = self.model(src_perturb_emb)
+        src_LCE_perturb, src_logits_perturb = self.model.compute_loss(src_perturb_logits, src_labels), self.model.compute_softmax_logits(src_perturb_logits)
 
         # target
         # ori
-        tgt_output_dic = self.model(tgt_texts, attention_mask=tgt_masks, labels=tgt_labels)
-        tgt_LCE_real, tgt_logits_real = tgt_output_dic["loss"], tgt_output_dic["logits"]
+        tgt_logits = self.model(tgt_emb)
+        tgt_LCE_real, tgt_logits_real = self.model.compute_loss(tgt_logits, tgt_labels), self.model.compute_softmax_logits(tgt_logits)
 
         # perturb
-        tgt_output_dic_perturbed = self.model(tgt_texts_perturb, attention_mask=tgt_masks_perturb, labels=tgt_labels)
-        tgt_LCE_perturb, tgt_logits_perturb = tgt_output_dic_perturbed["loss"], tgt_output_dic_perturbed["logits"]
+        tgt_perturb_logits = self.model(tgt_perturb_emb)
+        tgt_LCE_perturb, tgt_logits_perturb = self.model.compute_loss(tgt_perturb_logits, tgt_labels), self.model.compute_softmax_logits(tgt_perturb_logits)
 
         # (2) Compute Contrastive losses (simclr supported now)
 
@@ -101,11 +145,11 @@ class ContrastiveLearningModule(nn.Module):
             ctr_loss.to(self.device)
 
         if self.loss_type == "simclr":
-            src_z_i = self.mlp(src_output_dic["last_hidden_state"])
-            src_z_j = self.mlp(src_output_dic_perturbed["last_hidden_state"])
+            src_z_i = self.mlp(src_emb)
+            src_z_j = self.mlp(src_perturb_emb)
             src_lctr = ctr_loss(src_z_i, src_z_j)
-            tgt_z_i = self.mlp(tgt_output_dic["last_hidden_state"])
-            tgt_z_j = self.mlp(tgt_output_dic_perturbed["last_hidden_state"])
+            tgt_z_i = self.mlp(tgt_emb)
+            tgt_z_j = self.mlp(tgt_perturb_emb)
             tgt_lctr = ctr_loss(tgt_z_i, tgt_z_j)
 
         # Full loss
