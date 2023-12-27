@@ -2,7 +2,7 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 from collections import namedtuple
-from mmd_code import MMD
+from model.mmd_code import MMD
 
 
 # (1) MLP in the figure

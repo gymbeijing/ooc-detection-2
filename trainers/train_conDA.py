@@ -13,12 +13,12 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.optim import Adam
 from torch.utils.data import DataLoader, DistributedSampler, RandomSampler
 from tqdm import tqdm
-from transformers import *
+# from transformers import *
 from itertools import cycle
 from functools import reduce
 
 from dataset.twitterCOMMsDataset import get_dataloader
-from configs.configTwoTasks import ConfigTwoTasks
+from configs.configConDA import ConfigConDA
 from torch.utils.tensorboard import SummaryWriter
 
 import sys
@@ -235,25 +235,39 @@ def _all_reduce_dict(d, device):
     return output_d
 
 
-def run(cfg_model,
-        cfg_src,
-        cfg_tgt,
-        model_save_path,
-        model_save_name,
-        batch_size,
-        loss_type,
-        max_epochs=None,
-        device=None,
-        epoch_size=None,
-        seed=None,
-        token_dropout=None,
-        large=False,
-        learning_rate=2e-5,
-        weight_decay=0,
-        load_from_checkpoint=False,
-        lambda_w=0.5,
-        checkpoint_name='',
-        **kwargs):
+# def run(cfg,
+#         model_save_path,
+#         model_save_name,
+#         batch_size,
+#         loss_type,
+#         max_epochs=None,
+#         device=None,
+#         epoch_size=None,
+#         seed=None,
+#         token_dropout=None,
+#         large=False,
+#         learning_rate=2e-5,
+#         weight_decay=0,
+#         load_from_checkpoint=False,
+#         lambda_w=0.5,
+#         checkpoint_name='',
+#         **kwargs):
+def run(cfg, device):
+
+    model_save_path = cfg.args.model_save_path
+    model_save_name = cfg.args.model_save_name
+    batch_size = cfg.args.batch_size
+    loss_type = cfg.args.loss_type
+    max_epochs = cfg.args.max_epochs
+    epoch_size = None
+    seed = None
+    token_dropout = None
+    large = False
+    learning_rate = cfg.args.learning_rate
+    weight_decay = 0
+    load_from_checkpoint = False
+    lambda_w = cfg.args.lambda_w
+    checkpoint_name = ''
 
     args = locals()   # returns a dictionary containing the current local symbol table
     rank, world_size = setup_distributed()   # if not set to distributed, rank=0, world_size=1
@@ -287,10 +301,10 @@ def run(cfg_model,
     # roberta_model = RobertaForContrastiveClassification.from_pretrained(
     #     '/home/abhatt43/projects/huggingface_repos/' + model_name).to(device)
     # (1) classification MLP
-    mllm_cls_head = MLLMClassificationHead(cfg_model).to(device)
+    mllm_cls_head = MLLMClassificationHead(cfg).to(device)
 
     # (2) projection MLP
-    mlp = ProjectionMLP(cfg_model).to(device)
+    mlp = ProjectionMLP(cfg).to(device)
 
     # (3) the entire contrastive learning framework
     model = ContrastiveLearningModule(model=mllm_cls_head, mlp=mlp, loss_type=loss_type, logger=writer, device=device,
@@ -367,7 +381,7 @@ def run(cfg_model,
             break
 
 
-def main(args):
+def main(cfg):
     # number of process = number of gpus
     nproc = int(subprocess.check_output([sys.executable, '-c', "import torch;"
                                                                "print(torch.cuda.device_count() if torch.cuda.is_available() else 1)"]))
@@ -386,30 +400,20 @@ def main(args):
         for i in range(nproc):
             os.environ['RANK'] = str(i)
             os.environ['LOCAL_RANK'] = str(i)
-            process = Process(target=run, kwargs=vars(args))
+            process = Process(target=run, kwargs=vars(cfg.args))
             process.start()
             subprocesses.append(process)
 
         for process in subprocesses:
             process.join()
     else:
-        run(**vars(args))   # get a dictionary of the object's attributes, args is obtained from parse.parse_args()
+        run(cfg)   # get a dictionary of the object's attributes, args is obtained from parse.parse_args()
 
 
 if __name__ == '__main__':
-    cfg = ConfigTwoTasks()
+    cfg = ConfigConDA()
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     logger.info(device)
 
-    root_dir = '/import/network-temp/yimengg/data/'
-
-    logger.info("Loading training data")
-    train_loader, train_length = get_dataloader(cfg, shuffle=True, phase="train")
-    logger.info(f"Found {train_length} items in training data")
-
-    logger.info("Loading valid data")
-    val_loader, val_length = get_dataloader(cfg, shuffle=False, phase="val")
-    logger.info(f"Found {val_length} items in valid data")
-
-    main()
+    main(cfg, device)
 

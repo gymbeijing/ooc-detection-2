@@ -15,6 +15,8 @@ class ConfigConDA(object):
         self.args.hidden_size = 768
         self.args.num_labels = 2
         self.args.learning_rate = 2e-5
+        self.args.model_save_path = "./saved_model"
+        self.args.model_save_name = "ConDA.pt"
 
 
 def parse():

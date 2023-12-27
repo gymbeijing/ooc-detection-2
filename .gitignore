@@ -9,3 +9,4 @@ tmp
 venv_py38
 cluster_*.txt
 lightning_logs
+saved_model
