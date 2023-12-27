@@ -1,5 +1,6 @@
 import argparse
 
+
 class ConfigTwoTasks(object):
     def __init__(self):
         parser, args = parse()
@@ -13,7 +14,6 @@ class ConfigTwoTasks(object):
         self.out_dim = 2
 
 
-    # @staticmethod
 def parse():
     p = argparse.ArgumentParser()
 
