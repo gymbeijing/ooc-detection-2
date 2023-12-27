@@ -15,9 +15,9 @@ class ProjectionMLP(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(cfg.in_dim, cfg.in_dim),
+            nn.Linear(cfg.args.in_dim, cfg.args.in_dim),
             nn.ReLU(),
-            nn.Linear(cfg.in_dim, cfg.proj_dim)
+            nn.Linear(cfg.args.in_dim, cfg.args.proj_dim)
         )
 
     def forward(self, input_features):
@@ -33,12 +33,12 @@ class MLLMClassificationHead(nn.Module):
     """
     def __init__(self, cfg):
         super().__init__()
-        self.dense = nn.Linear(cfg.hidden_size, cfg.hidden_size)
+        self.dense = nn.Linear(cfg.args.hidden_size, cfg.args.hidden_size)
         classifier_dropout = (
-            cfg.classifier_dropout if cfg.classifier_dropout is not None else cfg.hidden_dropout_prob
+            cfg.args.classifier_dropout if cfg.args.classifier_dropout is not None else cfg.args.hidden_dropout_prob
         )
         self.dropout = nn.Dropout(classifier_dropout)
-        self.out_proj = nn.Linear(cfg.hidden_size, cfg.num_labels)
+        self.out_proj = nn.Linear(cfg.args.hidden_size, cfg.args.num_labels)
         self.soft_max = nn.Softmax(dim=1)
 
     def forward(self, features):

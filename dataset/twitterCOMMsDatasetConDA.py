@@ -92,7 +92,7 @@ class TwitterCOMMsDataset(Dataset):
                 "difficulty": difficulty}
 
 
-def get_dataloader(cfg, shuffle, phase='val'):
+def get_dataloader(cfg, few_shot_topic, shuffle, phase='val'):
     root_dir = '/import/network-temp/yimengg/data/'
     if phase=='train':
         # train_data = TwitterCOMMsDataset(feather_path='../raw_data/train_completed_exist.feather',
@@ -108,7 +108,7 @@ def get_dataloader(cfg, shuffle, phase='val'):
                                        img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
                                        multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy.pt',
                                        metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
-                                       few_shot_topic=[cfg.args.few_shot_topic],
+                                       few_shot_topic=few_shot_topic,
                                        mode="toy"
                                        )
         toy_iterator = data.DataLoader(toy_data,
@@ -120,6 +120,7 @@ def get_dataloader(cfg, shuffle, phase='val'):
                                        img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
                                        multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
                                        metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_multimodal_idx_to_image_path_valid.json',
+                                       few_shot_topic=few_shot_topic,
                                        )
         val_iterator = data.DataLoader(val_data,
                                        shuffle=shuffle,

@@ -17,6 +17,7 @@ class ConfigConDA(object):
         self.args.learning_rate = 2e-5
         self.args.model_save_path = "./saved_model"
         self.args.model_save_name = "ConDA.pt"
+        self.args.classifier_dropout = 0.2
 
 
 def parse():

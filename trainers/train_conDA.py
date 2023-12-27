@@ -17,7 +17,7 @@ from tqdm import tqdm
 from itertools import cycle
 from functools import reduce
 
-from dataset.twitterCOMMsDataset import get_dataloader
+from dataset.twitterCOMMsDatasetConDA import get_dataloader
 from configs.configConDA import ConfigConDA
 from torch.utils.tensorboard import SummaryWriter
 
@@ -319,12 +319,14 @@ def run(cfg, device):
     if world_size > 1:
         model = DistributedDataParallel(model, [rank], output_device=rank, find_unused_parameters=True)
 
+    src_removed_topic = [cfg.args.tgt_topic]
+    tgt_removed_topic = ['climate', 'covid', 'military'].remove(cfg.args.tgt_topic)
     # loading data
-    src_train_loader, src_train_loader_len = get_dataloader(cfg_src, shuffle=True, phase="train")
-    src_validation_loader, src_validation_loader_len = get_dataloader(cfg_src, shuffle=False, phase="val")
+    src_train_loader, src_train_loader_len = get_dataloader(cfg, src_removed_topic, shuffle=True, phase="train")
+    src_validation_loader, src_validation_loader_len = get_dataloader(cfg, src_removed_topic, shuffle=False, phase="val")
 
-    tgt_train_loader, tgt_train_loader_len = get_dataloader(cfg_tgt, shuffle=True, phase="train")
-    tgt_validation_loader, tgt_validation_loader_len = get_dataloader(cfg_tgt, shuffle=False, phase="val")
+    tgt_train_loader, tgt_train_loader_len = get_dataloader(cfg, tgt_removed_topic, shuffle=True, phase="train")
+    tgt_validation_loader, tgt_validation_loader_len = get_dataloader(cfg, tgt_removed_topic, shuffle=False, phase="val")
 
     print(f"Length of src_train_loader: {src_train_loader_len}, length of tgt_train_loader: {tgt_train_loader_len}")
     print(f"Length of src_validation_loader: {src_validation_loader_len}, length of tgt_validation_loader: {tgt_validation_loader_len}")
@@ -381,7 +383,7 @@ def run(cfg, device):
             break
 
 
-def main(cfg):
+def main(cfg, device):
     # number of process = number of gpus
     nproc = int(subprocess.check_output([sys.executable, '-c', "import torch;"
                                                                "print(torch.cuda.device_count() if torch.cuda.is_available() else 1)"]))
@@ -407,7 +409,7 @@ def main(cfg):
         for process in subprocesses:
             process.join()
     else:
-        run(cfg)   # get a dictionary of the object's attributes, args is obtained from parse.parse_args()
+        run(cfg, device)   # get a dictionary of the object's attributes, args is obtained from parse.parse_args()
 
 
 if __name__ == '__main__':
