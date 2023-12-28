@@ -9,13 +9,15 @@ import torch.utils.data as data
 class TwitterCOMMsDatasetConDA(Dataset):
     def __init__(self, feather_path, augmented_feather_path, img_dir,
                  multimodal_embeds_path, augmented_multimodal_embeds_path,
-                 metadata_path, few_shot_topic=[], mode="train/val"):
+                 metadata_path, few_shot_topic=None, mode="train/val"):
         """
         Args:
             feather_path (string): Path to the {train|val}_completed_exist.feather file.
             img_dir (string): Directory containing the images
         """
         # self.df = pd.read_csv(csv_path, index_col=0)
+        if few_shot_topic is None:
+            few_shot_topic = []
         self.img_dir = img_dir
         self.multimodal_embeds = load_tensor(multimodal_embeds_path)
         self.augmented_multimodal_embeds = load_tensor(augmented_multimodal_embeds_path)

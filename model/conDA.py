@@ -30,6 +30,8 @@ class ProjectionMLP(nn.Module):
 class MLLMClassificationHead(nn.Module):
     """
     A classifier following the MLLM embedding
+    Reference: https://github.com/huggingface/transformers/blob/v4.36.1/src/transformers/models/roberta/modeling_roberta.py#L1426
+    (RobertaClassificationHead, RobertaForSequenceClassification)
     """
     def __init__(self, cfg):
         super().__init__()
@@ -40,6 +42,7 @@ class MLLMClassificationHead(nn.Module):
         self.dropout = nn.Dropout(classifier_dropout)
         self.out_proj = nn.Linear(cfg.args.hidden_size, cfg.args.num_labels)
         self.soft_max = nn.Softmax(dim=1)
+        self.num_labels = cfg.args.num_labels
 
     def forward(self, features):
         """
@@ -76,7 +79,7 @@ class SimCLRContrastiveLoss(nn.Module):
         super().__init__()
         self.batch_size = batch_size
         self.register_buffer("temperature", torch.tensor(temperature))
-        self.register_buffer("negative_mask", (~torch.eye(self.batch_size * 2, self.batch_size * 2, dtype=bool)).float())
+        self.register_buffer("negatives_mask", (~torch.eye(self.batch_size * 2, self.batch_size * 2, dtype=bool)).float())
 
     def forward(self, emb_i, emb_j):
         """
@@ -96,6 +99,8 @@ class SimCLRContrastiveLoss(nn.Module):
 
         nominator = torch.exp(positives / self.temperature)
 
+        print(self.negatives_mask.shape)
+        print(similarity_matrix.shape)
         denominator = self.negatives_mask * torch.exp(similarity_matrix / self.temperature)
 
         loss_partial = -torch.log(nominator / torch.sum(denominator, dim=1))
@@ -118,6 +123,7 @@ class ContrastiveLearningModule(nn.Module):
     def forward(self, src_emb, src_perturb_emb, tgt_emb, tgt_perturb_emb, src_labels, tgt_labels):
 
         batch_size = src_emb.shape[0]
+        print(f"batch size: {batch_size}")
 
         # (1) Compute L_CE loss
         # source

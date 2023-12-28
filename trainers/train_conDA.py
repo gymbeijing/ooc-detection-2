@@ -319,14 +319,15 @@ def run(cfg, device):
     if world_size > 1:
         model = DistributedDataParallel(model, [rank], output_device=rank, find_unused_parameters=True)
 
-    src_removed_topic = [cfg.args.tgt_topic]
-    tgt_removed_topic = ['climate', 'covid', 'military'].remove(cfg.args.tgt_topic)
+    src_excluded_topic = [cfg.args.tgt_topic]
+    tgt_excluded_topic = ['climate', 'covid', 'military']
+    tgt_excluded_topic.remove(cfg.args.tgt_topic)
     # loading data
-    src_train_loader, src_train_loader_len = get_dataloader(cfg, src_removed_topic, shuffle=True, phase="train")
-    src_validation_loader, src_validation_loader_len = get_dataloader(cfg, src_removed_topic, shuffle=False, phase="val")
+    src_train_loader, src_train_loader_len = get_dataloader(cfg, few_shot_topic=src_excluded_topic, shuffle=True, phase="train")
+    src_validation_loader, src_validation_loader_len = get_dataloader(cfg, few_shot_topic=src_excluded_topic, shuffle=False, phase="val")
 
-    tgt_train_loader, tgt_train_loader_len = get_dataloader(cfg, tgt_removed_topic, shuffle=True, phase="train")
-    tgt_validation_loader, tgt_validation_loader_len = get_dataloader(cfg, tgt_removed_topic, shuffle=False, phase="val")
+    tgt_train_loader, tgt_train_loader_len = get_dataloader(cfg, few_shot_topic=tgt_excluded_topic, shuffle=True, phase="train")
+    tgt_validation_loader, tgt_validation_loader_len = get_dataloader(cfg, few_shot_topic=tgt_excluded_topic, shuffle=False, phase="val")
 
     print(f"Length of src_train_loader: {src_train_loader_len}, length of tgt_train_loader: {tgt_train_loader_len}")
     print(f"Length of src_validation_loader: {src_validation_loader_len}, length of tgt_validation_loader: {tgt_validation_loader_len}")
