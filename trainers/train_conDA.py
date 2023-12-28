@@ -140,11 +140,11 @@ def train(model: nn.Module, optimizer, device: str, src_loader: DataLoader,
         torch.cuda.empty_cache()
         for i, (src_data, tgt_data) in loop:
             # (1) Prepare the data inputs and labels
-            src_emb, src_perturb_emb, src_labels = src_data[0], src_data[1], src_data[2]
+            src_emb, src_perturb_emb, src_labels = src_data["multimodal_emb"], src_data["augmented_multimodal_emb"], src_data["label"]
             src_emb, src_perturb_emb, src_labels = src_emb.to(device), src_perturb_emb.to(device), src_labels.to(device)
             batch_size = src_emb.shape[0]
 
-            tgt_emb, tgt_perturb_emb, tgt_labels = tgt_data[0], tgt_data[1], tgt_data[2]
+            tgt_emb, tgt_perturb_emb, tgt_labels = tgt_data["multimodal_emb"], tgt_data["augmented_multimodal_emb"], tgt_data["label"]
             tgt_emb, tgt_perturb_emb, tgt_labels = tgt_emb.to(device), tgt_perturb_emb.to(device), tgt_labels.to(device)
 
             # (2) optimizer set to zero_grad()
@@ -199,11 +199,11 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             losses = []
             logit_votes = []
 
-            for emb, perturb_emb, labels in example:
+            for emb, _, labels in example:
                 emb, labels = emb.to(device), labels.to(device)
                 batch_size = emb.shape[0]
 
-                output_dic = model(emb, labels=labels)
+                output_dic = model(emb, labels=labels)   # What is the model here?
                 loss, logits = output_dic["loss"], output_dic["logits"]
                 losses.append(loss)
                 logit_votes.append(logits)
@@ -348,7 +348,7 @@ def run(cfg, device):
 
         train_metrics = train(model, optimizer, device, src_train_loader, tgt_train_loader, writer,
                               f'Epoch {epoch}', lambda_w=lambda_w)
-        validation_metrics = validate(model, device,
+        validation_metrics = validate(mllm_cls_head, device,
                                       src_validation_loader)  ## we are only using supervision on the source
 
         #

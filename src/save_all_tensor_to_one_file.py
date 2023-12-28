@@ -44,7 +44,8 @@ class NewsDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.df.iloc[idx]
-        caption = item['full_text_perturb']  # original caption
+        # caption = item['full_text_perturb']  # perturbed caption
+        caption = item['full_text']  # original caption
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
         caption = remove_punc(remove_url(caption))  # remove url & punctuation from the tokenized caption
 
@@ -60,7 +61,7 @@ class NewsDataset(Dataset):
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--phase", type=str, required=True, help="train or valid")
+    p.add_argument("--phase", type=str, required=True, help="{train ,valid, toy}")
     p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
     p.add_argument("--mode", type=str, required=True, default="multimodal", help="{unimodal, multimodal}")
 
@@ -91,7 +92,8 @@ def get_img_dir_and_df(phase):
         return train_img_dir, df_train
     if phase == 'toy':
         toy_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
-        df_toy = pd.read_feather('./raw_data/toy_completed_exist_augmented.feather')
+        # df_toy = pd.read_feather('./raw_data/toy_completed_exist_augmented.feather')
+        df_toy = pd.read_feather('./raw_data/toy_completed_exist.feather')
 
         return toy_img_dir, df_toy
 
