@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 import torch.utils.data as data
+from torch.utils.data.sampler import BatchSampler
 
 
 class TwitterCOMMsDatasetConDA(Dataset):
@@ -104,29 +105,31 @@ def get_dataloader(cfg, few_shot_topic, shuffle, phase='val'):
         #                                  shuffle=shuffle,
         #                                  batch_size=cfg.args.batch_size)
         # return train_iterator, train_data.__len__()
-        toy_data = TwitterCOMMsDatasetConDA(feather_path='./raw_data/toy_completed_exist.feather',
-                                            augmented_feather_path='./raw_data/toy_completed_exist_augmented.feather',
-                                            img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
-                                            multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy.pt',
-                                            augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy_augmented.pt',
-                                            metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
-                                            few_shot_topic=few_shot_topic,
-                                            mode="toy"
-                                            )
-        toy_iterator = data.DataLoader(toy_data,
-                                       shuffle=shuffle,
-                                       batch_size=cfg.args.batch_size)
-        return toy_iterator, toy_data.__len__()
+        toy_dataset = TwitterCOMMsDatasetConDA(feather_path='./raw_data/toy_completed_exist.feather',
+                                               augmented_feather_path='./raw_data/toy_completed_exist_augmented.feather',
+                                               img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
+                                               multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy.pt',
+                                               augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy_augmented.pt',
+                                               metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
+                                               few_shot_topic=few_shot_topic,
+                                               mode="toy"
+                                               )
+        batch_sampler = BatchSampler(range(len(toy_dataset)), batch_size=cfg.args.batch_size, drop_last=True)
+        # toy_iterator = data.DataLoader(toy_dataset,
+        #                                shuffle=shuffle,
+        #                                batch_size=cfg.args.batch_size)
+        toy_iterator = data.DataLoader(toy_dataset, batch_sampler=batch_sampler)
+        return toy_iterator, toy_dataset.__len__()
     else:  # phase=='val'
-        val_data = TwitterCOMMsDatasetConDA(feather_path='./raw_data/val_completed_exist.feather',
-                                            augmented_feather_path='./raw_data/val_completed_exist.feather',
-                                            img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
-                                            multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
-                                            augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
-                                            metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_multimodal_idx_to_image_path_valid.json',
-                                            few_shot_topic=few_shot_topic,
-                                            )
-        val_iterator = data.DataLoader(val_data,
+        val_dataset = TwitterCOMMsDatasetConDA(feather_path='./raw_data/val_completed_exist.feather',
+                                               augmented_feather_path='./raw_data/val_completed_exist.feather',
+                                               img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
+                                               multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
+                                               augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
+                                               metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_multimodal_idx_to_image_path_valid.json',
+                                               few_shot_topic=few_shot_topic,
+                                               )
+        val_iterator = data.DataLoader(val_dataset,
                                        shuffle=shuffle,
                                        batch_size=cfg.args.batch_size)
-        return val_iterator, val_data.__len__()
+        return val_iterator, val_dataset.__len__()

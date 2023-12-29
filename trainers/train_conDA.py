@@ -198,15 +198,16 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
         for example in loop:
             losses = []
             logit_votes = []
-
-            for emb, _, labels in example:
+            # print(example)
+            for data in example:
+                emb, labels = data["multimodal_emb"], data["label"]
                 emb, labels = emb.to(device), labels.to(device)
                 batch_size = emb.shape[0]
 
-                output_dic = model(emb, labels=labels)   # What is the model here?
-                loss, logits = output_dic["loss"], output_dic["logits"]
+                logits = model(emb)   # What is the model here? it's the mllm_cls_head
+                loss, softmax_logits = model.compute_loss(logits, labels=labels), model.compute_softmax_logits(logits)
                 losses.append(loss)
-                logit_votes.append(logits)
+                logit_votes.append(softmax_logits)
 
             loss = torch.stack(losses).mean(dim=0)
             logits = torch.stack(logit_votes).mean(dim=0)
@@ -323,14 +324,14 @@ def run(cfg, device):
     tgt_excluded_topic = ['climate', 'covid', 'military']
     tgt_excluded_topic.remove(cfg.args.tgt_topic)
     # loading data
-    src_train_loader, src_train_loader_len = get_dataloader(cfg, few_shot_topic=src_excluded_topic, shuffle=True, phase="train")
-    src_validation_loader, src_validation_loader_len = get_dataloader(cfg, few_shot_topic=src_excluded_topic, shuffle=False, phase="val")
+    src_train_loader, src_train_dataset_size = get_dataloader(cfg, few_shot_topic=src_excluded_topic, shuffle=True, phase="train")
+    src_validation_loader, src_validation_dataset_size = get_dataloader(cfg, few_shot_topic=src_excluded_topic, shuffle=False, phase="val")
 
-    tgt_train_loader, tgt_train_loader_len = get_dataloader(cfg, few_shot_topic=tgt_excluded_topic, shuffle=True, phase="train")
-    tgt_validation_loader, tgt_validation_loader_len = get_dataloader(cfg, few_shot_topic=tgt_excluded_topic, shuffle=False, phase="val")
+    tgt_train_loader, tgt_train_dataset_size = get_dataloader(cfg, few_shot_topic=tgt_excluded_topic, shuffle=True, phase="train")
+    tgt_validation_loader, tgt_validation_dataset_size = get_dataloader(cfg, few_shot_topic=tgt_excluded_topic, shuffle=False, phase="val")
 
-    print(f"Length of src_train_loader: {src_train_loader_len}, length of tgt_train_loader: {tgt_train_loader_len}")
-    print(f"Length of src_validation_loader: {src_validation_loader_len}, length of tgt_validation_loader: {tgt_validation_loader_len}")
+    print(f"source train dataset size: {src_train_dataset_size}, target train dataset size: {tgt_train_dataset_size}")
+    print(f"source validation dataset size: {src_validation_dataset_size}, target validation dataset size: {tgt_validation_dataset_size}")
 
     optimizer = Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     epoch_loop = count(1) if max_epochs is None else range(1, max_epochs + 1)   # count(1) is an infinite iterator
@@ -368,12 +369,12 @@ def run(cfg, device):
                 without_progress = 0
                 best_validation_accuracy = combined_metrics["validation/accuracy"]
 
-                model_to_save = MLLMClassificationHead
+                model_to_save = mllm_cls_head
                 torch.save(dict(
                     epoch=epoch,
                     model_state_dict=model_to_save.state_dict(),
                     optimizer_state_dict=optimizer.state_dict(),
-                    args=args
+                    # args=args
                 ),
                     os.path.join(model_save_path, model_save_name)
                 )

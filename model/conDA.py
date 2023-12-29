@@ -99,8 +99,6 @@ class SimCLRContrastiveLoss(nn.Module):
 
         nominator = torch.exp(positives / self.temperature)
 
-        print(self.negatives_mask.shape)
-        print(similarity_matrix.shape)
         denominator = self.negatives_mask * torch.exp(similarity_matrix / self.temperature)
 
         loss_partial = -torch.log(nominator / torch.sum(denominator, dim=1))
@@ -122,8 +120,8 @@ class ContrastiveLearningModule(nn.Module):
 
     def forward(self, src_emb, src_perturb_emb, tgt_emb, tgt_perturb_emb, src_labels, tgt_labels):
 
-        batch_size = src_emb.shape[0]
-        print(f"batch size: {batch_size}")
+        src_batch_size = src_emb.shape[0]
+        tgt_batch_size = tgt_emb.shape[0]
 
         # (1) Compute L_CE loss
         # source
@@ -147,16 +145,23 @@ class ContrastiveLearningModule(nn.Module):
         # (2) Compute Contrastive losses (simclr supported now)
 
         if self.loss_type == "simclr":
-            ctr_loss = SimCLRContrastiveLoss(batch_size=batch_size)
-            ctr_loss.to(self.device)
+            if src_batch_size == tgt_batch_size:
+                src_ctr_loss = SimCLRContrastiveLoss(batch_size=src_batch_size)
+                src_ctr_loss.to(self.device)
+                tgt_ctr_loss = src_ctr_loss
+            else:
+                src_ctr_loss = SimCLRContrastiveLoss(batch_size=src_batch_size)
+                src_ctr_loss.to(self.device)
+                tgt_ctr_loss = SimCLRContrastiveLoss(batch_size=tgt_batch_size)
+                tgt_ctr_loss.to(self.device)
 
         if self.loss_type == "simclr":
             src_z_i = self.mlp(src_emb)
             src_z_j = self.mlp(src_perturb_emb)
-            src_lctr = ctr_loss(src_z_i, src_z_j)
+            src_lctr = src_ctr_loss(src_z_i, src_z_j)
             tgt_z_i = self.mlp(tgt_emb)
             tgt_z_j = self.mlp(tgt_perturb_emb)
-            tgt_lctr = ctr_loss(tgt_z_i, tgt_z_j)
+            tgt_lctr = tgt_ctr_loss(tgt_z_i, tgt_z_j)
 
         # Full loss
         # (3) Compute MMD loss
