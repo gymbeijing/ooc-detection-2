@@ -27,6 +27,7 @@ logging.basicConfig(
     format="[%(asctime)s]:[%(processName)-11s]" + "[%(levelname)-s]:[%(name)s] %(message)s",
 )
 
+
 # Define the Dataset class
 # Use import instead
 
@@ -87,10 +88,10 @@ def train(train_iterator, val_iterator, device):
 
             if i % 1000 == 0:
                 logger.info("Epoch [%d/%d] %d-th batch: training accuracy: %.3f, loss: %.3f" % (
-                epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
+                    epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
 
         logger.info("Epoch [%d/%d]: training accuracy: %.3f, loss: %.3f" % (
-        epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
+            epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
 
         test_pred, test_true = test(net, val_iterator, criterion, device)
         assert test_pred.shape[0] == len(val_data), "test_pred.shape[0] is not equal to the length of val data"
@@ -144,8 +145,8 @@ def test(net, iterator, criterion, device):
             cur_batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(cur_batch_size)
 
-            y_pred_list.append(y_preds)   # [bs, 2]?
-            y_true_list.append(y)   # [bs, 2]?
+            y_pred_list.append(y_preds)  # [bs, 2]?
+            y_true_list.append(y)  # [bs, 2]?
 
             # Compute overall performance
             num_correct["all"] += sum(top_pred == y).item()
@@ -192,7 +193,6 @@ def parse_args():
 
 
 if __name__ == '__main__':
-
     # Parse arguments
     args = parse_args()
     BATCH_SIZE = args.bs
@@ -216,19 +216,25 @@ if __name__ == '__main__':
     #                                  metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
     #                                  few_shot_topic=[few_shot_topic]
     #                                  )  # took ~one hour to construct the dataset
-    train_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
-                                     img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
-                                     multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
-                                     metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_valid.json',
-                                     few_shot_topic=few_shot_topic
-                                   )   # small sample
+    # train_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
+    #                                  img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
+    #                                  multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
+    #                                  metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_valid.json',
+    #                                  few_shot_topic=few_shot_topic
+    #                                  )  # small sample
+    train_data = TwitterCOMMsDataset(feather_path='./raw_data/toy_completed_exist.feather',
+                                     img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
+                                     multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_toy.pt',
+                                     metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_toy.json',
+                                     few_shot_topic=few_shot_topic,
+                                     )  # small sample
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
     val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
-                                   img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
-                                   multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
-                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_valid.json'
+                                   img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
+                                   multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
+                                   metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_valid.json'
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 
