@@ -69,8 +69,8 @@ def load_queries_and_image_paths(df):
     labels = []
 
     for idx, item in tqdm(df.iterrows(), desc='iterations'):
-        text = item['full_text']  # original caption
-        text += "Answer with yes or no. Does the image match the following text? "
+        text = "Answer with yes or no. Does the image match the following text? "
+        text += item['full_text']  # original caption
         img_filename = item['filename']
         image_path = os.path.join(val_img_dir, img_filename)
         label = item["falsified"]
@@ -181,6 +181,8 @@ def eval_model(args):
     num_correct = sum(x == y for x, y in zip(preds, labels))
     num_total = len(labels)
     print(float(num_correct / num_total))
+    val_df.insert(len(val_df.columns), "llava_output", preds)
+    val_df.to_feather("./raw_data/val_completed_exist_with_llava_outputs.feather")
 
 
 if __name__ == "__main__":
