@@ -1,4 +1,7 @@
 # activate venv_llava
+'''
+python src/eval_llava.py --model-path ../LLaVA/llava-v1.5-7b --sep , --temperature 0 --num_beams 1 --max_new_tokens 512
+'''
 import sys
 sys.path.append('../LLaVA')
 
@@ -69,7 +72,16 @@ def load_queries_and_image_paths(df):
     labels = []
 
     for idx, item in tqdm(df.iterrows(), desc='iterations'):
-        text = "Answer with yes or no. Does the image match the following text? "
+        # text = "Answer with yes or no. Does the image match the following text? "
+        text = "Task: News Image-Text Matching Analysis."
+        "Objective: To assess whether the attached image and the provided text description correspond with each other accurately,"
+        "Instructions:"
+        "1. Examine the attached image carefully."
+        "2. Read the text description provided below the image."
+        "3. Determine the degress of alignment between the image content and the text. Consider factors such as the main subjects, background elements, and overall context."
+        "4. Provide your response in a clear 'yes' or 'no' format."
+        "Prompt: Does the following text description accurately represent the content and context of the attached image? Please respond with 'yes' if there is a match and 'no' if there are discrepancies."
+        " Does the image match the following text? "
         text += item['full_text']  # original caption
         img_filename = item['filename']
         image_path = os.path.join(val_img_dir, img_filename)
@@ -181,7 +193,7 @@ def eval_model(args):
     num_correct = sum(x == y for x, y in zip(preds, labels))
     num_total = len(labels)
     print(float(num_correct / num_total))
-    val_df.insert(len(val_df.columns), "llava_output", preds)
+    val_df.insert(len(val_df.columns), "llava_advanced_prompt_output", preds)
     val_df.to_feather("./raw_data/val_completed_exist_with_llava_outputs.feather")
 
 
@@ -199,7 +211,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_new_tokens", type=int, default=512)
     args = parser.parse_args()
 
-    val_feather_path = './raw_data/val_completed_exist.feather'
+    val_feather_path = './raw_data/val_completed_exist_with_llava_outputs.feather'
     val_df = pd.read_feather(val_feather_path)  # already drop the non-exists
     val_img_dir = '/import/network-temp/yimengg/data/twitter-comms/images/val_images/val_tweet_image_ids'
 
