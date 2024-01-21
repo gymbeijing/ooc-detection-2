@@ -97,7 +97,7 @@ def load_queries_and_image_paths(df):
         "[Example 1]: Take the first attached image and the following caption as the first example with ground true label. [Caption]: Speaker Pelosi and Senate Maj Leader Schumer talking about climate change action now on @cspan"
         "@cspanwj https://t.co/9vw0qxdk7a [Label]: Yes"
         "[Example 2]: Take the second attached image and the following caption as the second example with ground true label. [Caption]: Russia and China continue to unabashedly copy military vehicle designs. These pictures are *not* of a Black Hawk, CB90 or A400M..."
-        "(Z-20, Project 03160 and suspected Y-30) https://t.co/vRZtzwxHgn [Label]: Yes"
+        "(Z-20, Project 03160 and suspected Y-30) https://t.co/vRZtzwxHgn [Label]: No"
         "[Prompt]: Does the following caption accurately represent the content and the context of the query image (the third attached image)? Please respond with ‘yes’ if there is a match and ‘no’ if there are discrepancies identified."
         "[Caption]: "
         text += item['full_text']  # original caption
