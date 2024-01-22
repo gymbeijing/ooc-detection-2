@@ -45,7 +45,8 @@ class NewsDataset(Dataset):
     def __getitem__(self, idx):
         item = self.df.iloc[idx]
         # caption = item['full_text_perturb']  # perturbed caption
-        caption = item['full_text']  # original caption
+        # caption = item['full_text']  # original caption
+        caption = item['rephrased_gpt4']   # for mini_toy df
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
         caption = remove_punc(remove_url(caption))  # remove url & punctuation from the tokenized caption
 
@@ -61,7 +62,7 @@ class NewsDataset(Dataset):
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--phase", type=str, required=True, help="{train ,valid, toy}")
+    p.add_argument("--phase", type=str, required=True, help="{train ,valid, toy, mini_toy}")
     p.add_argument("--base_model", type=str, required=True, help="{clip, blip-2, albef}")
     p.add_argument("--mode", type=str, required=True, default="multimodal", help="{unimodal, multimodal}")
 
@@ -90,10 +91,11 @@ def get_img_dir_and_df(phase):
         df_train = df_train.drop(delete_row)
 
         return train_img_dir, df_train
-    if phase == 'toy':
+    if phase == 'toy' or phase == 'mini_toy':
         toy_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist_augmented.feather')
-        df_toy = pd.read_feather('./raw_data/toy_completed_exist.feather')
+        # df_toy = pd.read_feather('./raw_data/toy_completed_exist.feather')
+        df_toy = pd.read_feather('./raw_data/mini_toy_completed_exist_rephrased.feather')
 
         return toy_img_dir, df_toy
 
@@ -185,9 +187,9 @@ if __name__ == '__main__':
     logger.info("Saving tensor")
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
     save_tensor(multimodal_feature_tensor,
-                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}.pt')
+                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_rephrased.pt')
     logger.info("Saving dictionary")
     save_json(image_path_dict,
-              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}.json')
+              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_rephrased.json')
 
 
