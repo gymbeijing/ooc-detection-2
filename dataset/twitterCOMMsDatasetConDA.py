@@ -110,6 +110,7 @@ def get_dataloader(cfg, few_shot_topic, shuffle, phase='val'):
                                                img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
                                                multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy.pt',
                                                augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy_augmented.pt',
+                                            #    augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_mini_toy_rephrased.pt',
                                                metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
                                                few_shot_topic=few_shot_topic,
                                                mode="toy"

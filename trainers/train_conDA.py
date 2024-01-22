@@ -1,3 +1,6 @@
+"""
+(venv_py38) python -m trainers.train_conDA --batch_size 256 --max_epochs 5 --tgt_topic military --base_model blip-2 --loss_type simclr
+"""
 import argparse
 import logging
 import os
