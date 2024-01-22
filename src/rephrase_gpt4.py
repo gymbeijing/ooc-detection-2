@@ -53,6 +53,7 @@ def rephrase_query(df, top_n):
         preds.append(response.json()["choices"][0]['message']['content'])
 
     assert len(preds) == top_n, "Prediction length doesn't match the specified number of datapoints."
+    return preds
 
 
 if __name__ == "__main__":
@@ -68,5 +69,6 @@ if __name__ == "__main__":
     mini_toy_df = toy_df.head(args.top_n)
     mini_toy_df.insert(len(mini_toy_df.columns), "rephrased_gpt4", rephrased_texts)
     mini_toy_df.to_feather('./raw_data/mini_toy_completed_exist_rephrased.feather')
+    # print(rephrased_texts)
 
     
