@@ -45,12 +45,12 @@ class NewsDataset(Dataset):
     def __getitem__(self, idx):
         item = self.df.iloc[idx]
         # caption = item['full_text_perturb']  # perturbed caption
-        # caption = item['full_text']  # original caption
-        caption = item['rephrased_gpt4']   # for mini_toy df
+        caption = item['full_text']  # original caption
+        # caption = item['rephrased_gpt4']   # for mini_toy df
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
         caption = remove_punc(remove_url(caption))  # remove url & punctuation from the tokenized caption
 
-        img_filename = item['filename']
+        img_filename = item['filename_negative']
         image_path = os.path.join(self.img_dir, img_filename)
 
         raw_image = Image.open(image_path).convert('RGB')
@@ -95,7 +95,8 @@ def get_img_dir_and_df(phase):
         toy_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist_augmented.feather')
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist.feather')
-        df_toy = pd.read_feather('./raw_data/mini_toy_completed_exist_rephrased.feather')
+        # df_toy = pd.read_feather('./raw_data/mini_toy_completed_exist_rephrased.feather')
+        df_toy = pd.read_feather('./raw_data/toy_completed_exist_triplet.feather')
 
         return toy_img_dir, df_toy
 
@@ -187,9 +188,9 @@ if __name__ == '__main__':
     logger.info("Saving tensor")
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
     save_tensor(multimodal_feature_tensor,
-                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_rephrased.pt')
+                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_negative.pt')
     logger.info("Saving dictionary")
     save_json(image_path_dict,
-              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_rephrased.json')
+              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_negative.json')
 
 
