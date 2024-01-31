@@ -1,3 +1,9 @@
+'''
+Prepares a toy dataset from the training set with a set ratio
+
+python -m src.twitterCOMMsToyDataset --bs BATCH_SIZE --base_model BASE_MODEL --ratio RATIO
+'''
+
 from torch.utils.data import Dataset
 from utils.helper import save_tensor, load_tensor, load_json
 import pandas as pd

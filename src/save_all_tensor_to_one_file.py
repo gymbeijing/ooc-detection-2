@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+'''
+Converts caption and image in the dataframe to multimodal embeddings
+
+python -m src.save_all_tensor_to_one_file --phase PHASE --base_model BASE_MODEL --mode MODE
+'''
+
 import torch
 from torch.utils.data import Dataset
 import torch.utils.data as data
@@ -50,7 +56,8 @@ class NewsDataset(Dataset):
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
         caption = remove_punc(remove_url(caption))  # remove url & punctuation from the tokenized caption
 
-        img_filename = item['filename_negative']
+        # img_filename = item['filename_negative']   # negative sample's image filename
+        img_filename = item['filename']
         image_path = os.path.join(self.img_dir, img_filename)
 
         raw_image = Image.open(image_path).convert('RGB')
@@ -188,9 +195,9 @@ if __name__ == '__main__':
     logger.info("Saving tensor")
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
     save_tensor(multimodal_feature_tensor,
-                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_negative.pt')
+                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_original.pt')
     logger.info("Saving dictionary")
     save_json(image_path_dict,
-              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_negative.json')
+              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_original.json')
 
 
