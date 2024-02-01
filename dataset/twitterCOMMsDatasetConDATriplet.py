@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 import torch.utils.data as data
-from torch.utils.data.sampler import BatchSampler
+from torch.utils.data.sampler import BatchSampler, RandomSampler
 
 
 class TwitterCOMMsDatasetConDATriplet(Dataset):
@@ -107,11 +107,13 @@ def get_dataloader(cfg, few_shot_topic, shuffle, phase='val'):
                                                few_shot_topic=few_shot_topic,
                                                mode="toy"
                                                )
-        batch_sampler = BatchSampler(range(len(toy_dataset)), batch_size=cfg.args.batch_size, drop_last=True)
+        sampler = RandomSampler(toy_dataset)
+        # batch_sampler = BatchSampler(range(len(toy_dataset)), batch_size=cfg.args.batch_size, drop_last=True)
+        batch_sampler = BatchSampler(sampler, batch_size=cfg.args.batch_size, drop_last=True)
         # toy_iterator = data.DataLoader(toy_dataset,
         #                                shuffle=shuffle,
         #                                batch_size=cfg.args.batch_size)
-        toy_iterator = data.DataLoader(toy_dataset, batch_sampler=batch_sampler)
+        toy_iterator = data.DataLoader(toy_dataset, batch_sampler=batch_sampler)   # cannot be shuffled
         return toy_iterator, toy_dataset.__len__()
     else:  # phase=='val'
         val_dataset = TwitterCOMMsDatasetConDATriplet(triplet_feather_path='./raw_data/val_completed_exist.feather',

@@ -1,8 +1,13 @@
+'''
+Stores the core modules of conDA model
+'''
+
 from torch import nn
 import torch
 import torch.nn.functional as F
 from collections import namedtuple
 from model.mmd_code import MMD
+from torch.nn import TripletMarginLoss
 
 
 # (1) MLP in the figure
@@ -184,6 +189,102 @@ class ContrastiveLearningModule(nn.Module):
                        + lambda_mmd * mmd
 
         data = {"total_loss": loss, "src_ctr_loss": src_lctr, "tgt_ctr_loss": tgt_lctr, "src_ce_loss_real": src_LCE_real,
+                "src_ce_loss_perturb": src_LCE_perturb, "mmd": mmd, "src_logits": src_logits_real,
+                "tgt_logits":tgt_logits_real}
+
+        if isinstance(data, dict):
+            data_named_tuple = namedtuple("ModelEndpoints", sorted(data.keys()))
+            data = data_named_tuple(**data)
+        elif isinstance(data, list):
+            data = tuple(data)
+
+        return data
+    
+
+
+# (3b)' The overall model + our proposed triplet loss
+class ContrastiveLearningAndTripletLossModule(nn.Module):
+    def __init__(self, model, mlp, loss_type, logger, device, lambda_w):
+        # model, mlp is initialized outside
+        super().__init__()
+        self.model = model   # RobertaForContrastiveLearning in the original paper, here is MLLMClassificationHead
+        self.mlp = mlp   # Projection mlp
+        self.loss_type = loss_type   # "simclr"
+        self.logger = logger
+        self.device = device   # device
+        self.lambda_w = lambda_w
+
+    def forward(self, src_emb, src_perturb_emb, src_negative_emb, tgt_emb, tgt_perturb_emb, src_labels, tgt_labels):
+
+        src_batch_size = src_emb.shape[0]
+        tgt_batch_size = tgt_emb.shape[0]
+
+        # (1) Compute L_CE loss
+        # source
+        # original
+        src_logits = self.model(src_emb)
+        src_LCE_real, src_logits_real = self.model.compute_loss(src_logits, src_labels), self.model.compute_softmax_logits(src_logits)
+
+        # perturb
+        src_perturb_logits = self.model(src_perturb_emb)
+        src_LCE_perturb, src_logits_perturb = self.model.compute_loss(src_perturb_logits, src_labels), self.model.compute_softmax_logits(src_perturb_logits)
+
+        # target
+        # original
+        tgt_logits = self.model(tgt_emb)
+        tgt_LCE_real, tgt_logits_real = self.model.compute_loss(tgt_logits, tgt_labels), self.model.compute_softmax_logits(tgt_logits)
+
+        # perturb
+        tgt_perturb_logits = self.model(tgt_perturb_emb)
+        tgt_LCE_perturb, tgt_logits_perturb = self.model.compute_loss(tgt_perturb_logits, tgt_labels), self.model.compute_softmax_logits(tgt_perturb_logits)
+
+        # (2) Compute Contrastive losses (simclr supported now)
+
+        if self.loss_type == "simclr":
+            if src_batch_size == tgt_batch_size:
+                src_ctr_loss = SimCLRContrastiveLoss(batch_size=src_batch_size)
+                src_ctr_loss.to(self.device)
+                tgt_ctr_loss = src_ctr_loss
+            else:
+                src_ctr_loss = SimCLRContrastiveLoss(batch_size=src_batch_size)
+                src_ctr_loss.to(self.device)
+                tgt_ctr_loss = SimCLRContrastiveLoss(batch_size=tgt_batch_size)
+                tgt_ctr_loss.to(self.device)
+            triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2, eps=1e-7)
+
+        if self.loss_type == "simclr":
+            src_z_i = self.mlp(src_emb)   # original
+            src_z_j = self.mlp(src_perturb_emb)   # positive
+            src_z_k = self.mlp(src_negative_emb)   # negative
+            src_lctr = src_ctr_loss(src_z_i, src_z_j)
+            src_ltriplet = triplet_loss(src_z_i, src_z_j, src_z_k)
+            tgt_z_i = self.mlp(tgt_emb)   # original
+            tgt_z_j = self.mlp(tgt_perturb_emb)   # positive
+            tgt_lctr = tgt_ctr_loss(tgt_z_i, tgt_z_j)
+
+        # Full loss
+        # (3) Compute MMD loss
+        mmd = MMD(src_z_i, tgt_z_i, kernel='rbf')
+
+        use_ce_perturb = True
+        use_both_ce_losses = True
+        lambda_mmd = 1.0
+
+        if not use_both_ce_losses:
+            loss = self.lambda_w * (src_lctr + tgt_lctr) / 2 + lambda_mmd * mmd
+        else:
+            if use_ce_perturb:   # lambda_w: 0.5, lambda_mmd: 1.0
+                loss = (1 - self.lambda_w) * (src_LCE_real + src_LCE_perturb) / 2 \
+                       + self.lambda_w * (src_lctr + tgt_lctr) / 2 \
+                       + lambda_mmd * mmd \
+                       + src_ltriplet   # triplet loss
+            else:
+                loss = (1 - self.lambda_w) * src_LCE_real \
+                       + self.lambda_w * (src_lctr + tgt_lctr) / 2 \
+                       + lambda_mmd * mmd \
+                       + src_ltriplet   # triplet loss
+
+        data = {"total_loss": loss, "src_ctr_loss": src_lctr, "src_triplet_loss": src_ltriplet, "tgt_ctr_loss": tgt_lctr, "src_ce_loss_real": src_LCE_real,
                 "src_ce_loss_perturb": src_LCE_perturb, "mmd": mmd, "src_logits": src_logits_real,
                 "tgt_logits":tgt_logits_real}
 
