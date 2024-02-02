@@ -107,8 +107,8 @@ def get_dataloader(cfg, few_shot_topic, shuffle, phase='val'):
                                                few_shot_topic=few_shot_topic,
                                                mode="toy"
                                                )
-        sampler = RandomSampler(toy_dataset)
-        # batch_sampler = BatchSampler(range(len(toy_dataset)), batch_size=cfg.args.batch_size, drop_last=True)
+        sampler = RandomSampler(toy_dataset)   # randomly sampling, order determined by torch.manual_seed()
+        # batch_sampler = BatchSampler(range(len(toy_dataset)), batch_size=cfg.args.batch_size, drop_last=True)   # not random, in its original order
         batch_sampler = BatchSampler(sampler, batch_size=cfg.args.batch_size, drop_last=True)
         # toy_iterator = data.DataLoader(toy_dataset,
         #                                shuffle=shuffle,

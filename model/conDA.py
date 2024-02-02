@@ -20,14 +20,13 @@ class ProjectionMLP(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(cfg.args.in_dim, cfg.args.in_dim),
+            nn.Linear(cfg.args.in_dim, cfg.args.in_dim),   # 768 -> 768
             nn.ReLU(),
-            nn.Linear(cfg.args.in_dim, cfg.args.proj_dim)
+            nn.Linear(cfg.args.in_dim, cfg.args.proj_dim)   # 768 -> 500
         )
 
     def forward(self, input_features):
         # input_features: [bs, 768], previously from [:, 0, :]
-        # x = input_features[:, 0, :]
         return self.layers(input_features)
 
 
@@ -49,17 +48,38 @@ class MLLMClassificationHead(nn.Module):
         self.soft_max = nn.Softmax(dim=1)
         self.num_labels = cfg.args.num_labels
 
+        ###### Add more dense layers to the original classifier ######
+        self.ln1 = nn.Linear(768, 1024)
+        self.ln2 = nn.Linear(1024, 4096)
+        self.ln3 = nn.Linear(4096, 4096)
+        self.ln4 = nn.Linear(4096, 1024)
+        self.ln5 = nn.Linear(1024, 768)
+        #############################
+
     def forward(self, features):
         """
         Return the logits
         """
         # features: [bs, 768], previously from [:, 0, :]
-        # x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
         x = self.dropout(features)
-        x = self.dense(x)
+        x = self.dense(x)   # 768 -> 768
         x = torch.tanh(x)
+        ###### Add more dense layers to the original classifier ######
+        # x = self.ln1(x)   # 768 -> 768
+        # x = torch.tanh(x)
+        # x = self.ln2(x)   # 768 -> 768
+        # x = torch.tanh(x)
+        # x = self.ln3(x)   # 768 -> 768
+        # x = torch.tanh(x)
+        # x = self.ln4(x)   # 768 -> 768
+        # x = torch.tanh(x)
+        # x = self.ln5(x)   # 768 -> 768
+        # x = torch.tanh(x)
+        x = self.dense(x)   # 768 -> 768
+        x = torch.tanh(x)
+        #############################
         x = self.dropout(x)
-        x = self.out_proj(x)
+        x = self.out_proj(x)   # 768 -> 2
         logits = x
         return logits
 

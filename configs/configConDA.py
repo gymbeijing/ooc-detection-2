@@ -11,10 +11,10 @@ class ConfigConDA(object):
 
     def set_configuration(self):
         self.args.in_dim = 768
-        self.args.proj_dim = 300
+        self.args.proj_dim = 500   # original: 300
         self.args.hidden_size = 768
         self.args.num_labels = 2
-        self.args.learning_rate = 2e-5
+        self.args.learning_rate = 2e-4
         self.args.model_save_path = "./saved_model"
         self.args.model_save_name = "ConDA.pt"
         self.args.classifier_dropout = 0.2
