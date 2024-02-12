@@ -178,6 +178,7 @@ def train(model: nn.Module, optimizer, device: str, src_loader: DataLoader,
                              mmd=output_dic.mmd.item(), 
                              src_LCE_real=output_dic.src_ce_loss_real.item(),
                              src_LCE_perturb=output_dic.src_ce_loss_perturb.item(),
+                             src_LCE_negative=output_dic.src_ce_loss_negative.item(),   #### newly added negative cross-entropy loss ######
                              src_ltriplet=output_dic.src_triplet_loss.item(),
                              src_lctr=output_dic.src_ctr_loss.item())
 

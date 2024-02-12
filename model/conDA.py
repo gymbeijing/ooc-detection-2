@@ -249,6 +249,11 @@ class ContrastiveLearningAndTripletLossModule(nn.Module):
         src_perturb_logits = self.model(src_perturb_emb)
         src_LCE_perturb, src_logits_perturb = self.model.compute_loss(src_perturb_logits, src_labels), self.model.compute_softmax_logits(src_perturb_logits)
 
+        ######### negative #########
+        src_negative_logits = self.model(src_negative_emb)
+        src_LCE_negative, src_negative_perturb = self.model.compute_loss(src_negative_logits, 1-src_labels), self.model.compute_softmax_logits(src_negative_logits)
+        ############################
+
         # target
         # original
         tgt_logits = self.model(tgt_emb)
@@ -294,18 +299,18 @@ class ContrastiveLearningAndTripletLossModule(nn.Module):
             loss = self.lambda_w * (src_lctr + tgt_lctr) / 2 + lambda_mmd * mmd
         else:
             if use_ce_perturb:   # lambda_w: 0.5, lambda_mmd: 1.0
-                loss = (1 - self.lambda_w) * (src_LCE_real + src_LCE_perturb) / 2 \
+                loss = (1 - self.lambda_w) * (src_LCE_real + src_LCE_perturb + src_LCE_negative) / 2 \
                        + self.lambda_w * (src_lctr + tgt_lctr) / 2 \
                        + lambda_mmd * mmd \
                        + src_ltriplet   # triplet loss
             else:
-                loss = (1 - self.lambda_w) * src_LCE_real \
+                loss = (1 - self.lambda_w) * (src_LCE_real + src_LCE_negative) \
                        + self.lambda_w * (src_lctr + tgt_lctr) / 2 \
                        + lambda_mmd * mmd \
-                       + src_ltriplet   # triplet loss
+                       + src_ltriplet  # triplet loss
 
         data = {"total_loss": loss, "src_ctr_loss": src_lctr, "src_triplet_loss": src_ltriplet, "tgt_ctr_loss": tgt_lctr, "src_ce_loss_real": src_LCE_real,
-                "src_ce_loss_perturb": src_LCE_perturb, "mmd": mmd, "src_logits": src_logits_real,
+                "src_ce_loss_perturb": src_LCE_perturb, "src_ce_loss_negative": src_LCE_negative, "mmd": mmd, "src_logits": src_logits_real,
                 "tgt_logits":tgt_logits_real}
 
         if isinstance(data, dict):
