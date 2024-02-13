@@ -1,6 +1,6 @@
-# activate venv_llava
+# activate venv_py38
 '''
-python src/eval_llava.py --model-path ../LLaVA/llava-v1.5-7b --sep , --temperature 0 --num_beams 1 --max_new_tokens 512
+python src/eval_blip2.py
 '''
 from lavis.models import load_model_and_preprocess
 from PIL import Image
@@ -47,15 +47,15 @@ def load_queries_and_image_paths(df):
         # text = "Answer with yes or no. Does the image match the following text? "
 
         # Prompt 2
-        text = "Task: News Image-Text Matching Analysis."
-        "Objective: To assess whether the attached image and the provided text description correspond with each other accurately,"
-        "Instructions:"
-        "1. Examine the attached image carefully."
-        "2. Read the text description provided below the image."
-        "3. Determine the degress of alignment between the image content and the text. Consider factors such as the main subjects, background elements, and overall context."
-        "4. Provide your response in a clear 'yes' or 'no' format."
-        "Prompt: Does the following text description accurately represent the content and context of the attached image? Please respond with 'yes' if there is a match and 'no' if there are discrepancies."
-        " Does the image match the following text? "
+        # text = "Task: News Image-Text Matching Analysis."
+        # "Objective: To assess whether the attached image and the provided text description correspond with each other accurately,"
+        # "Instructions:"
+        # "1. Examine the attached image carefully."
+        # "2. Read the text description provided below the image."
+        # "3. Determine the degress of alignment between the image content and the text. Consider factors such as the main subjects, background elements, and overall context."
+        # "4. Provide your response in a clear 'yes' or 'no' format."
+        # "Prompt: Does the following text description accurately represent the content and context of the attached image? Please respond with 'yes' if there is a match and 'no' if there are discrepancies."
+        # " Does the image match the following text? "
 
         # # Prompt 3
         # text = "Below is an instruction that describes the task. Write a response that appropriately completes the request. "
@@ -71,6 +71,18 @@ def load_queries_and_image_paths(df):
         # "(Z-20, Project 03160 and suspected Y-30) https://t.co/vRZtzwxHgn [Label]: No"
         # "[Prompt]: Does the following caption accurately represent the content and the context of the query image (the third attached image)? Please respond with ‘yes’ if there is a match and ‘no’ if there are discrepancies identified."
         # "[Caption]: "
+
+        # Prompt 4
+        text = "Below is an instruction that describes the task. Write a response that appropriately completes the request."
+        "[Task]: Out-of-context Image Detection"
+        "[Objective]: To learn to categorize image-text posts as pristine or falsified (out-of-context) by means of detecting semantic inconsistencies between images and text."
+        "[Instructions]:"
+        "1. Examine the attached image carefully."
+        "2. Read the text description provided carefully."
+        "3. Determine whether the image and the text are originally paired in the news post. Consider factors such as the main objects, background elements and overall context."
+        "4. Provide your response in a clear 'yes' or 'no' format."
+        "[Prompt]: Does the following text description and the attached image come from the same news post? Please respond with 'yes' if there is a semantic match and 'no' if there are semantic inconsistencies."
+
         text += item['full_text']  # original caption
         img_filename = item['filename']
         image_path = os.path.join(val_img_dir, img_filename)

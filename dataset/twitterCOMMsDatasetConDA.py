@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 import torch.utils.data as data
-from torch.utils.data.sampler import BatchSampler
+from torch.utils.data.sampler import BatchSampler, RandomSampler
 
 
 class TwitterCOMMsDatasetConDA(Dataset):
@@ -108,14 +108,18 @@ def get_dataloader(cfg, few_shot_topic, shuffle, phase='val'):
         toy_dataset = TwitterCOMMsDatasetConDA(feather_path='./raw_data/toy_completed_exist.feather',
                                                augmented_feather_path='./raw_data/toy_completed_exist_augmented.feather',
                                                img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
-                                               multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy.pt',
-                                               augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy_augmented.pt',
+                                            #    multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy.pt',
+                                               multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_mean_multimodal_embeds_toy.pt',
+                                            #    augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy_augmented.pt',
                                             #    augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_mini_toy_rephrased.pt',
+                                               augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_mean_multimodal_embeds_toy_augmented.pt',
                                                metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
                                                few_shot_topic=few_shot_topic,
                                                mode="toy"
                                                )
-        batch_sampler = BatchSampler(range(len(toy_dataset)), batch_size=cfg.args.batch_size, drop_last=True)
+        sampler = RandomSampler(toy_dataset)   # randomly sampling, order determined by torch.manual_seed()
+        batch_sampler = BatchSampler(sampler, batch_size=cfg.args.batch_size, drop_last=True)
+        # batch_sampler = BatchSampler(range(len(toy_dataset)), batch_size=cfg.args.batch_size, drop_last=True)
         # toy_iterator = data.DataLoader(toy_dataset,
         #                                shuffle=shuffle,
         #                                batch_size=cfg.args.batch_size)

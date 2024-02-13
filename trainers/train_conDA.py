@@ -1,5 +1,5 @@
 """
-(venv_py38) python -m trainers.train_conDA --batch_size 256 --max_epochs 5 --tgt_topic military --base_model blip-2 --loss_type simclr
+(venv_py38) python -m trainers.train_conDA --batch_size 256 --max_epochs 10 --tgt_topic military --base_model blip-2 --loss_type simclr
 """
 import argparse
 import logging
@@ -26,7 +26,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 import sys
 sys.path.insert(0,os.getcwd())   # inserts the current working directory at the beginning of the search path
-torch.manual_seed(int(1000))
+torch.manual_seed(int(1001))
 
 DISTRIBUTED_FLAG = False
 
