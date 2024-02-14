@@ -43,10 +43,15 @@ def load_queries_and_image_paths(df):
     labels = []
 
     for idx, item in tqdm(df.iterrows(), desc='iterations'):
-        # Prompt 1
-        # text = "Answer with yes or no. Does the image match the following text? "
+        # Prompt 1.1
+        text = "Answer with yes or no. Does the image match the following text? "
+
+         # Prompt 1.2
+        # text = "Answer with yes or no. Examine the following text and attached image." 
+        # "Predict whether the image-text post is falsified (out-of-context) by means of detecting semantic inconsistencies between images and text. "
 
         # Prompt 2
+        # Answered with some text chunk
         # text = "Task: News Image-Text Matching Analysis."
         # "Objective: To assess whether the attached image and the provided text description correspond with each other accurately,"
         # "Instructions:"
@@ -73,15 +78,25 @@ def load_queries_and_image_paths(df):
         # "[Caption]: "
 
         # Prompt 4
-        text = "Below is an instruction that describes the task. Write a response that appropriately completes the request."
-        "[Task]: Out-of-context Image Detection"
-        "[Objective]: To learn to categorize image-text posts as pristine or falsified (out-of-context) by means of detecting semantic inconsistencies between images and text."
-        "[Instructions]:"
-        "1. Examine the attached image carefully."
-        "2. Read the text description provided carefully."
-        "3. Determine whether the image and the text are originally paired in the news post. Consider factors such as the main objects, background elements and overall context."
-        "4. Provide your response in a clear 'yes' or 'no' format."
-        "[Prompt]: Does the following text description and the attached image come from the same news post? Please respond with 'yes' if there is a semantic match and 'no' if there are semantic inconsistencies."
+        # Answered with some text chunk
+        # text = "Below is an instruction that describes the task. Write a response that appropriately completes the request."
+        # "[Task]: Out-of-context Image Detection"
+        # "[Objective]: To learn to categorize image-text posts as pristine or falsified (out-of-context) by means of detecting semantic inconsistencies between images and text."
+        # "[Instructions]:"
+        # "1. Examine the attached image carefully."
+        # "2. Read the text description provided carefully."
+        # "3. Determine whether the image and the text are originally paired in the news post. Consider factors such as the main objects, background elements and overall context."
+        # "4. Provide your response in a clear 'yes' or 'no' format."
+        # "[Prompt]: Does the following text description and the attached image come from the same news post? Please respond with 'yes' if there is a semantic match and 'no' if there are semantic inconsistencies."
+
+        # Prompt 5
+        # Answered with some text chunk
+        # text = "Below is an instruction that describes the task. Write a response that appropriately completes the request."
+        # "Task: Out-of-context Multimodal News Detection"
+        # "Objective: To predict whether the image-text post is falsified (out-of-context) by means of detecting semantic inconsistencies between images and text."
+        # "Instruction: 1. Examine the attached image and the provided text carefully. Answer with yes if the image-text is out-of-context. Answer with no if the image-text is not out-of-context."
+        # "Labels: [Yes, No]"
+        # "Text: "
 
         text += item['full_text']  # original caption
         img_filename = item['filename']
@@ -109,10 +124,12 @@ def eval_model():
         # print(image_file)
         image = load_images(image_file)
         output = model.generate({"image": image, "prompt": f"Question: {q} Answer:"})
+        output = output[0]
+        # print(output)
 
         preds.append(output)
 
-    preds = [True if pred == "No" else False for pred in preds]
+    preds = [True if pred == "no" or pred == "No" else False for pred in preds]
     num_correct = sum(x == y for x, y in zip(preds, labels))
     num_total = len(labels)
     print(float(num_correct / num_total))

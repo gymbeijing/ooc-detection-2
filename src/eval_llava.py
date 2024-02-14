@@ -72,10 +72,17 @@ def load_queries_and_image_paths(df):
     labels = []
 
     for idx, item in tqdm(df.iterrows(), desc='iterations'):
-        # Prompt 1
+        # Prompt 1.1
+        # Answered with No/Yes
         # text = "Answer with yes or no. Does the image match the following text? "
 
+        # Prompt 1.2
+        text = "Does the following text description and the attached image come from the same news post?"
+        "Please respond with 'yes' if there is a semantic match and 'no' if there are semantic inconsistencies."
+        "Text description: "
+
         # Prompt 2
+        # Answered with text chunk
         # text = "Task: News Image-Text Matching Analysis."
         # "Objective: To assess whether the attached image and the provided text description correspond with each other accurately,"
         # "Instructions:"
@@ -87,19 +94,32 @@ def load_queries_and_image_paths(df):
         # " Does the image match the following text? "
 
         # Prompt 3
-        text = "Below is an instruction that describes the task. Write a response that appropriately completes the request. "
-        "[Instructions]:"
-        "1. Examine the query image (the third attached image) carefully"
-        "2. Read the caption provided carefully"
-        "3. Determine whether the image and the caption are semantically matched. Consider factors such as the main objects, background elements and overall context."
-        "4. Provide your response in a clear ‘yes’ or ‘no’ format."
-        "5. Look at two examples provided with label in the below and get an understanding of the task."
-        "[Example 1]: Take the first attached image and the following caption as the first example with ground true label. [Caption]: Speaker Pelosi and Senate Maj Leader Schumer talking about climate change action now on @cspan"
-        "@cspanwj https://t.co/9vw0qxdk7a [Label]: Yes"
-        "[Example 2]: Take the second attached image and the following caption as the second example with ground true label. [Caption]: Russia and China continue to unabashedly copy military vehicle designs. These pictures are *not* of a Black Hawk, CB90 or A400M..."
-        "(Z-20, Project 03160 and suspected Y-30) https://t.co/vRZtzwxHgn [Label]: No"
-        "[Prompt]: Does the following caption accurately represent the content and the context of the query image (the third attached image)? Please respond with ‘yes’ if there is a match and ‘no’ if there are discrepancies identified."
-        "[Caption]: "
+        # text = "Below is an instruction that describes the task. Write a response that appropriately completes the request. "
+        # "[Instructions]:"
+        # "1. Examine the query image (the third attached image) carefully"
+        # "2. Read the caption provided carefully"
+        # "3. Determine whether the image and the caption are semantically matched. Consider factors such as the main objects, background elements and overall context."
+        # "4. Provide your response in a clear ‘yes’ or ‘no’ format."
+        # "5. Look at two examples provided with label in the below and get an understanding of the task."
+        # "[Example 1]: Take the first attached image and the following caption as the first example with ground true label. [Caption]: Speaker Pelosi and Senate Maj Leader Schumer talking about climate change action now on @cspan"
+        # "@cspanwj https://t.co/9vw0qxdk7a [Label]: Yes"
+        # "[Example 2]: Take the second attached image and the following caption as the second example with ground true label. [Caption]: Russia and China continue to unabashedly copy military vehicle designs. These pictures are *not* of a Black Hawk, CB90 or A400M..."
+        # "(Z-20, Project 03160 and suspected Y-30) https://t.co/vRZtzwxHgn [Label]: No"
+        # "[Prompt]: Does the following caption accurately represent the content and the context of the query image (the third attached image)? Please respond with ‘yes’ if there is a match and ‘no’ if there are discrepancies identified."
+        # "[Caption]: "
+
+        # Prompt 4
+        # Answered with text chunk
+        # text = "Below is an instruction that describes the task. Please write a response that appropriately completes the request."
+        # "Task: Out-of-context Image Detection"
+        # "Objective: To learn to categorize image-text posts as pristine or falsified (out-of-context) by means of detecting semantic inconsistencies between images and text."
+        # "Instructions:"
+        # "1. Examine the attached image carefully."
+        # "2. Read the text description provided carefully."
+        # "3. Determine whether the image and the text are originally paired in the news post. Consider factors such as the main objects, background elements and overall context."
+        # "4. Provide your response in a clear 'yes' or 'no' format."
+        # "Prompt: Does the following text description and the attached image come from the same news post? Please respond with 'yes' if there is a semantic match and 'no' if there are semantic inconsistencies."
+
         text += item['full_text']  # original caption
         img_filename = item['filename']
         image_path = os.path.join(val_img_dir, img_filename)
@@ -205,13 +225,14 @@ def eval_model(args):
         if outputs.endswith(stop_str):
             outputs = outputs[: -len(stop_str)]
         outputs = outputs.strip()
-        preds.append(outputs)
+        print(outputs.split(",")[0])
+        preds.append(outputs.split(",")[0])   # Added split only for the Prompt 1.2
 
-    preds = [True if pred == "No" else False for pred in preds]
+    preds = [True if pred == "No" or pred == 'no' else False for pred in preds]
     num_correct = sum(x == y for x, y in zip(preds, labels))
     num_total = len(labels)
     print(float(num_correct / num_total))
-    val_df.insert(len(val_df.columns), "llava_advanced_prompt_output", preds)
+    val_df.insert(len(val_df.columns), "llava_prompt_1.2", preds)
     val_df.to_feather("./raw_data/val_completed_exist_with_llava_outputs.feather")
 
 
