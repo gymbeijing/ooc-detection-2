@@ -223,6 +223,7 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             validation_epoch_size += batch_size
             validation_loss += loss.item() * batch_size
 
+
             loop.set_postfix(loss=loss.item(), acc=validation_accuracy / validation_epoch_size)
 
     return {
@@ -356,6 +357,8 @@ def run(cfg, device):
 
         train_metrics = train(model, optimizer, device, src_train_loader, tgt_train_loader, writer,
                               f'Epoch {epoch}', lambda_w=lambda_w)
+        # validation_metrics = validate(mllm_cls_head, device,
+        #                               src_validation_loader)  ## we are only using supervision on the source
         validation_metrics = validate(mllm_cls_head, device,
                                       src_validation_loader)  ## we are only using supervision on the source
 

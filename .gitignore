@@ -11,3 +11,4 @@ cluster_*.txt
 lightning_logs
 saved_model
 logs
+results

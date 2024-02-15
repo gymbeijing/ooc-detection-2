@@ -55,6 +55,10 @@ class MLLMClassificationHead(nn.Module):
         self.ln4 = nn.Linear(4096, 1024)
         self.ln5 = nn.Linear(1024, 768)
         #############################
+        
+        ###### Add batch normalization ######
+        self.bn1 = nn.BatchNorm1d(768)
+        #############################
 
     def forward(self, features):
         """

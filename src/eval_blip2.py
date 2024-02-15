@@ -44,11 +44,15 @@ def load_queries_and_image_paths(df):
 
     for idx, item in tqdm(df.iterrows(), desc='iterations'):
         # Prompt 1.1
-        text = "Answer with yes or no. Does the image match the following text? "
+        # text = "Answer with yes or no. Does the image match the following text? "
 
          # Prompt 1.2
         # text = "Answer with yes or no. Examine the following text and attached image." 
         # "Predict whether the image-text post is falsified (out-of-context) by means of detecting semantic inconsistencies between images and text. "
+
+        # Prompt 1.3
+        text = "Answer with yes or no. Does the image match the text [text]? "
+        "text: "
 
         # Prompt 2
         # Answered with some text chunk
@@ -125,7 +129,7 @@ def eval_model():
         image = load_images(image_file)
         output = model.generate({"image": image, "prompt": f"Question: {q} Answer:"})
         output = output[0]
-        # print(output)
+        print(output)
 
         preds.append(output)
 
@@ -133,6 +137,8 @@ def eval_model():
     num_correct = sum(x == y for x, y in zip(preds, labels))
     num_total = len(labels)
     print(float(num_correct / num_total))
+    val_df.insert(len(val_df.columns), "blip-2_prompt_1.3", preds)
+    val_df.to_feather("./raw_data/val_completed_exist_with_blip-2_outputs.feather")
 
 
 if __name__ == "__main__":
