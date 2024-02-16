@@ -238,15 +238,7 @@ def test_time_adaptation(model, test_loader):
     for data in test_loader:
         emb, labels = data["original_multimodal_emb"], data["original_label"]
         emb, labels = emb.to(device), labels.to(device)
-        outputs = model.compute_till_bn(emb)
-        # Update batch normalization statistics
-        for module in model.modules():
-            if isinstance(module, nn.BatchNorm1d):
-                module.train()  # Set BN layer to train mode for updating statistics
-                with torch.no_grad():
-                    module.running_mean = torch.mean(outputs, dim=0)  # Update running mean
-                    module.running_var = torch.var(outputs, dim=0, unbiased=False)  # Update running variance
-                module.eval()  # Set BN layer back to eval mode
+        outputs = model(emb) # Updating EMA of E[x] and Var[x]
 
 
 def _all_reduce_dict(d, device):
@@ -375,11 +367,11 @@ def run(cfg, device):
                               f'Epoch {epoch}', lambda_w=lambda_w)
         # validation_metrics = validate(mllm_cls_head, device,
         #                               src_validation_loader)  ## we are only using supervision on the source. Wrong using src_validation_loader!!!
+        ## Test-time Adaptation ###
+        test_time_adaptation(mllm_cls_head, tgt_validation_loader)
+        ###########################
         validation_metrics = validate(mllm_cls_head, device,
                                       tgt_validation_loader)  ## we are only using supervision on the source
-        # ### Test-time Adaptation ###
-        # test_time_adaptation(mllm_cls_head, tgt_validation_loader)
-        # ############################
 
 
         combined_metrics = _all_reduce_dict({**validation_metrics, **train_metrics}, device)
