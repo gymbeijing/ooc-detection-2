@@ -233,6 +233,22 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
     }
 
 
+def test_time_adaptation(model, test_loader):
+    model.train()  # Set model to train mode for adaptation
+    for data in test_loader:
+        emb, labels = data["original_multimodal_emb"], data["original_label"]
+        emb, labels = emb.to(device), labels.to(device)
+        outputs = model.compute_till_bn(emb)
+        # Update batch normalization statistics
+        for module in model.modules():
+            if isinstance(module, nn.BatchNorm1d):
+                module.train()  # Set BN layer to train mode for updating statistics
+                with torch.no_grad():
+                    module.running_mean = torch.mean(outputs, dim=0)  # Update running mean
+                    module.running_var = torch.var(outputs, dim=0, unbiased=False)  # Update running variance
+                module.eval()  # Set BN layer back to eval mode
+
+
 def _all_reduce_dict(d, device):
     # wrap in tensor and use reduce to gpu0 tensor
     output_d = {}
@@ -358,11 +374,14 @@ def run(cfg, device):
         train_metrics = train(model, optimizer, device, src_train_loader, tgt_train_loader, writer,
                               f'Epoch {epoch}', lambda_w=lambda_w)
         # validation_metrics = validate(mllm_cls_head, device,
-        #                               src_validation_loader)  ## we are only using supervision on the source
+        #                               src_validation_loader)  ## we are only using supervision on the source. Wrong using src_validation_loader!!!
         validation_metrics = validate(mllm_cls_head, device,
-                                      src_validation_loader)  ## we are only using supervision on the source
+                                      tgt_validation_loader)  ## we are only using supervision on the source
+        # ### Test-time Adaptation ###
+        # test_time_adaptation(mllm_cls_head, tgt_validation_loader)
+        # ############################
 
-        #
+
         combined_metrics = _all_reduce_dict({**validation_metrics, **train_metrics}, device)
 
         combined_metrics["train/src_accuracy"] /= combined_metrics["train/epoch_size"]

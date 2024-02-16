@@ -54,10 +54,11 @@ class MLLMClassificationHead(nn.Module):
         self.ln3 = nn.Linear(4096, 4096)
         self.ln4 = nn.Linear(4096, 1024)
         self.ln5 = nn.Linear(1024, 768)
+        self.dense2 = nn.Linear(768, 768)
         #############################
         
         ###### Add batch normalization ######
-        self.bn1 = nn.BatchNorm1d(768)
+        self.bn = nn.BatchNorm1d(768)
         #############################
 
     def forward(self, features):
@@ -67,19 +68,26 @@ class MLLMClassificationHead(nn.Module):
         # features: [bs, 768], previously from [:, 0, :]
         x = self.dropout(features)
         x = self.dense(x)   # 768 -> 768
+        # x = self.bn(x)
         x = torch.tanh(x)
         ###### Add more dense layers to the original classifier ######
         # x = self.ln1(x)   # 768 -> 768
+        # x = self.bn1(x)
         # x = torch.tanh(x)
         # x = self.ln2(x)   # 768 -> 768
+        # x = self.bn2(x)
         # x = torch.tanh(x)
         # x = self.ln3(x)   # 768 -> 768
+        # x = self.bn3(x)
         # x = torch.tanh(x)
         # x = self.ln4(x)   # 768 -> 768
+        # x = self.bn4(x)
         # x = torch.tanh(x)
         # x = self.ln5(x)   # 768 -> 768
+        # x = self.bn5(x)
         # x = torch.tanh(x)
-        x = self.dense(x)   # 768 -> 768
+        x = self.dense2(x)   # 768 -> 768
+        x = self.bn(x)
         x = torch.tanh(x)
         #############################
         x = self.dropout(x)
