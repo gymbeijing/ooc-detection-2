@@ -7,7 +7,7 @@ import os
 import subprocess
 from itertools import count
 from multiprocessing import Process
-from model.conDA import ContrastiveLearningAndTripletLossModule, ProjectionMLP, MLLMClassificationHead
+from model.conDA import ContrastiveLearningAndTripletLossModule, ProjectionMLP, MLLMClassificationHead, ContrastiveLearningAndTripletLossZModule
 
 import torch
 import torch.distributed as dist
@@ -210,8 +210,14 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
                 emb, labels = emb.to(device), labels.to(device)
                 batch_size = emb.shape[0]
 
-                logits = model(emb)   # What is the model here? it's the mllm_cls_head
-                loss, softmax_logits = model.compute_loss(logits, labels=labels), model.compute_softmax_logits(logits)
+                ###### For the z instead of h input to the model ######
+                z = model.mlp(emb)
+                ###############
+
+                # logits = model(emb)   # What is the model here? it's the mllm_cls_head
+                logits = model.model(z)   # What is the model here? it's the entire ConDA, compatible with ContrastiveLearningAndTripletLossZModule
+                # loss, softmax_logits = model.compute_loss(logits, labels=labels), model.compute_softmax_logits(logits)
+                loss, softmax_logits = model.model.compute_loss(logits, labels=labels), model.model.compute_softmax_logits(logits)
                 losses.append(loss)
                 logit_votes.append(softmax_logits)
 
@@ -238,7 +244,13 @@ def test_time_adaptation(model, test_loader):
     for data in test_loader:
         emb, labels = data["original_multimodal_emb"], data["original_label"]
         emb, labels = emb.to(device), labels.to(device)
-        outputs = model(emb) # Updating EMA of E[x] and Var[x]
+
+        # For ContrastiveLearningAndTripletLossModule, use:
+        # outputs = model(emb) # Updating EMA of E[x] and Var[x]
+
+        # For ContrastiveLearningAndTripletLossZModule, use:
+        z = model.mlp(emb)
+        _ = model.model(z)
 
 
 def _all_reduce_dict(d, device):
@@ -323,7 +335,7 @@ def run(cfg, device):
     mlp = ProjectionMLP(cfg).to(device)
 
     # (3) the entire contrastive learning framework
-    model = ContrastiveLearningAndTripletLossModule(model=mllm_cls_head, mlp=mlp, loss_type=loss_type, logger=writer, device=device,
+    model = ContrastiveLearningAndTripletLossZModule(model=mllm_cls_head, mlp=mlp, loss_type=loss_type, logger=writer, device=device,
                                       lambda_w=lambda_w)
     # one process
     if rank == 0:
@@ -368,10 +380,13 @@ def run(cfg, device):
         # validation_metrics = validate(mllm_cls_head, device,
         #                               src_validation_loader)  ## we are only using supervision on the source. Wrong using src_validation_loader!!!
         ## Test-time Adaptation ###
-        test_time_adaptation(mllm_cls_head, tgt_validation_loader)
+        # test_time_adaptation(mllm_cls_head, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossModule
+        test_time_adaptation(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
         ###########################
-        validation_metrics = validate(mllm_cls_head, device,
-                                      tgt_validation_loader)  ## we are only using supervision on the source
+        # validation_metrics = validate(mllm_cls_head, device,
+        #                               tgt_validation_loader)  ## we are only using supervision on the source, compatible with ContrastiveLearningAndTripletLossModule
+        validation_metrics = validate(model, device,
+                                      tgt_validation_loader)  ## we are only using supervision on the source, compatible with ContrastiveLearningAndTripletLossZModule
 
 
         combined_metrics = _all_reduce_dict({**validation_metrics, **train_metrics}, device)

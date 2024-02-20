@@ -54,11 +54,12 @@ class MLLMClassificationHead(nn.Module):
         self.ln3 = nn.Linear(4096, 4096)
         self.ln4 = nn.Linear(4096, 1024)
         self.ln5 = nn.Linear(1024, 768)
-        self.dense2 = nn.Linear(768, 768)
+        self.dense2 = nn.Linear(cfg.args.hidden_size, cfg.args.hidden_size)
         #############################
         
         ###### Add batch normalization ######
-        self.bn = nn.BatchNorm1d(768)
+        self.bn = nn.BatchNorm1d(cfg.args.hidden_size)
+        self.bn1 = nn.BatchNorm1d(cfg.args.hidden_size)
         #############################
 
     def forward(self, features):
@@ -68,7 +69,7 @@ class MLLMClassificationHead(nn.Module):
         # features: [bs, 768], previously from [:, 0, :]
         x = self.dropout(features)
         x = self.dense(x)   # 768 -> 768
-        # x = self.bn(x)
+        x = self.bn1(x)   # adding this bn boost performance in z->cls
         x = torch.tanh(x)
         ###### Add more dense layers to the original classifier ######
         # x = self.ln1(x)   # 768 -> 768
@@ -298,6 +299,107 @@ class ContrastiveLearningAndTripletLossModule(nn.Module):
             tgt_z_i = self.mlp(tgt_emb)   # original
             tgt_z_j = self.mlp(tgt_perturb_emb)   # positive
             tgt_lctr = tgt_ctr_loss(tgt_z_i, tgt_z_j)
+
+        # Full loss
+        # (3) Compute MMD loss
+        mmd = MMD(src_z_i, tgt_z_i, kernel='rbf')
+
+        use_ce_perturb = True
+        use_both_ce_losses = True
+        lambda_mmd = 1.0
+
+        if not use_both_ce_losses:
+            loss = self.lambda_w * (src_lctr + tgt_lctr) / 2 + lambda_mmd * mmd
+        else:
+            if use_ce_perturb:   # lambda_w: 0.5, lambda_mmd: 1.0
+                loss = (1 - self.lambda_w) * (src_LCE_real + src_LCE_perturb + src_LCE_negative) / 2 \
+                       + self.lambda_w * (src_lctr + tgt_lctr) / 2 \
+                       + lambda_mmd * mmd \
+                       + src_ltriplet   # triplet loss
+            else:
+                loss = (1 - self.lambda_w) * (src_LCE_real + src_LCE_negative) \
+                       + self.lambda_w * (src_lctr + tgt_lctr) / 2 \
+                       + lambda_mmd * mmd \
+                       + src_ltriplet  # triplet loss
+
+        data = {"total_loss": loss, "src_ctr_loss": src_lctr, "src_triplet_loss": src_ltriplet, "tgt_ctr_loss": tgt_lctr, "src_ce_loss_real": src_LCE_real,
+                "src_ce_loss_perturb": src_LCE_perturb, "src_ce_loss_negative": src_LCE_negative, "mmd": mmd, "src_logits": src_logits_real,
+                "tgt_logits":tgt_logits_real}
+
+        if isinstance(data, dict):
+            data_named_tuple = namedtuple("ModelEndpoints", sorted(data.keys()))
+            data = data_named_tuple(**data)
+        elif isinstance(data, list):
+            data = tuple(data)
+
+        return data
+    
+
+# (3b)'' The overall model + our proposed triplet loss + input z to the classifier instead of h
+class ContrastiveLearningAndTripletLossZModule(nn.Module):
+    def __init__(self, model, mlp, loss_type, logger, device, lambda_w):
+        # model, mlp is initialized outside
+        super().__init__()
+        self.model = model   # RobertaForContrastiveLearning in the original paper, here is MLLMClassificationHead
+        self.mlp = mlp   # Projection mlp
+        self.loss_type = loss_type   # "simclr"
+        self.logger = logger
+        self.device = device   # device
+        self.lambda_w = lambda_w
+
+    def forward(self, src_emb, src_perturb_emb, src_negative_emb, tgt_emb, tgt_perturb_emb, src_labels, tgt_labels):
+
+        src_batch_size = src_emb.shape[0]
+        tgt_batch_size = tgt_emb.shape[0]
+
+        # (2) Compute Contrastive losses (simclr supported now)
+
+        if self.loss_type == "simclr":
+            if src_batch_size == tgt_batch_size:
+                src_ctr_loss = SimCLRContrastiveLoss(batch_size=src_batch_size)
+                src_ctr_loss.to(self.device)
+                tgt_ctr_loss = src_ctr_loss
+            else:
+                src_ctr_loss = SimCLRContrastiveLoss(batch_size=src_batch_size)
+                src_ctr_loss.to(self.device)
+                tgt_ctr_loss = SimCLRContrastiveLoss(batch_size=tgt_batch_size)
+                tgt_ctr_loss.to(self.device)
+            triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2, eps=1e-7)
+
+        if self.loss_type == "simclr":
+            src_z_i = self.mlp(src_emb)   # original
+            src_z_j = self.mlp(src_perturb_emb)   # positive
+            src_z_k = self.mlp(src_negative_emb)   # negative
+            src_lctr = src_ctr_loss(src_z_i, src_z_j)
+            src_ltriplet = triplet_loss(src_z_i, src_z_j, src_z_k)
+            tgt_z_i = self.mlp(tgt_emb)   # original
+            tgt_z_j = self.mlp(tgt_perturb_emb)   # positive
+            tgt_lctr = tgt_ctr_loss(tgt_z_i, tgt_z_j)
+
+
+        # (1) Compute L_CE loss
+        # source
+        # original
+        src_logits = self.model(src_z_i)
+        src_LCE_real, src_logits_real = self.model.compute_loss(src_logits, src_labels), self.model.compute_softmax_logits(src_logits)
+
+        # perturb
+        src_perturb_logits = self.model(src_z_j)
+        src_LCE_perturb, src_logits_perturb = self.model.compute_loss(src_perturb_logits, src_labels), self.model.compute_softmax_logits(src_perturb_logits)
+
+        ######### negative #########
+        src_negative_logits = self.model(src_z_k)
+        src_LCE_negative, src_negative_perturb = self.model.compute_loss(src_negative_logits, 1-src_labels), self.model.compute_softmax_logits(src_negative_logits)
+        ############################
+
+        # target
+        # original
+        tgt_logits = self.model(tgt_z_i)
+        tgt_LCE_real, tgt_logits_real = self.model.compute_loss(tgt_logits, tgt_labels), self.model.compute_softmax_logits(tgt_logits)
+
+        # perturb
+        tgt_perturb_logits = self.model(tgt_z_j)
+        tgt_LCE_perturb, tgt_logits_perturb = self.model.compute_loss(tgt_perturb_logits, tgt_labels), self.model.compute_softmax_logits(tgt_perturb_logits)
 
         # Full loss
         # (3) Compute MMD loss
