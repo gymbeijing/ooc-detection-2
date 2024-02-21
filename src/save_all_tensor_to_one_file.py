@@ -102,7 +102,7 @@ def get_img_dir_and_df(phase):
     if phase == 'toy' or phase == 'mini_toy':
         toy_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist_augmented.feather')
-        df_toy = pd.read_feather('./raw_data/toy_completed_exist_random_swap.feather')
+        df_toy = pd.read_feather('./raw_data/toy_completed_exist_random_swap_triplet.feather')
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist.feather')
         # df_toy = pd.read_feather('./raw_data/mini_toy_completed_exist_rephrased.feather')
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist_triplet.feather')
@@ -121,8 +121,8 @@ def get_multimodal_feature(dataloader, model, mode):
         if base_model == 'blip-2':
             if mode == 'multimodal':
                 features = model.extract_features(samples, mode="multimodal")
-                # multimodal_embeds = features.multimodal_embeds[:, 0, :]  # [bs, 1, 768]
-                multimodal_embeds = features.multimodal_embeds[:, :, :].mean(dim=1)  # [bs, 1, 768]
+                multimodal_embeds = features.multimodal_embeds[:, 0, :]  # [bs, 1, 768]
+                # multimodal_embeds = features.multimodal_embeds[:, :, :].mean(dim=1)  # [bs, 1, 768]
             else:   # unimodal
                 text_features = model.extract_features(samples, mode="text")
                 text_embeds = text_features.text_embeds[:, 0, :]   # [bs, 256]
@@ -196,11 +196,11 @@ if __name__ == '__main__':
     image_path_dict, multimodal_feature_tensor = get_multimodal_feature(image_text_metadata_loader, model, mode)
 
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
-    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_mean_{mode}_embeds_{phase}_random_swap.pt")
+    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_{mode}_embeds_{phase}_random_swap.pt")
     save_tensor(multimodal_feature_tensor,
-                root_dir+f'tensor/{base_model}_mean_{mode}_embeds_{phase}_random_swap.pt')
-    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_mean_{mode}_idx_to_image_path_{phase}_random_swap.json")
+                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_random_swap.pt')
+    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_random_swap.json")
     save_json(image_path_dict,
-              root_dir+f'metadata/{base_model}_mean_{mode}_idx_to_image_path_{phase}_random_swap.json')
+              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_random_swap.json')
 
 
