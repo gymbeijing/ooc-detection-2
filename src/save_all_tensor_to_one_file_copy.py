@@ -27,6 +27,8 @@ import logging
 import argparse
 from utils.helper import save_tensor, save_json, remove_url, remove_punc
 
+from torchvision import transforms
+
 
 # Logger
 logger = logging.getLogger()
@@ -44,15 +46,20 @@ class NewsDataset(Dataset):
         self.vis_processors = vis_processors
         self.txt_processors = txt_processors
         self.df = df
+        self.transforms = transforms.Compose([transforms.RandomHorizontalFlip(p=0.5)
+                                    #   
+                                    #   transforms.ToDtype(torch.float32, scale=True),
+                                    #   transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                                      ])
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         item = self.df.iloc[idx]
-        caption = item['full_text_random_crop']  # perturbed caption
+        # caption = item['full_text_random_crop']  # perturbed caption
         # caption = item['full_text_perturb']  # perturbed caption
-        # caption = item['full_text']  # original caption
+        caption = item['full_text']  # original caption
         # caption = item['rephrased_gpt4']   # for mini_toy df
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
         caption = remove_punc(remove_url(caption))  # remove url & punctuation from the tokenized caption
@@ -62,6 +69,9 @@ class NewsDataset(Dataset):
         image_path = os.path.join(self.img_dir, img_filename)
 
         raw_image = Image.open(image_path).convert('RGB')
+        ### for image augmentation ###
+        raw_image = self.transforms(raw_image)
+        ##############################
         image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
         text_input = txt_processors["eval"](caption)
 
@@ -102,10 +112,10 @@ def get_img_dir_and_df(phase):
     if phase == 'toy' or phase == 'mini_toy':
         toy_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist_augmented.feather')
-        df_toy = pd.read_feather('./raw_data/toy_completed_exist_random_crop_triplet.feather')
+        # df_toy = pd.read_feather('./raw_data/toy_completed_exist_random_crop_triplet.feather')
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist.feather')
         # df_toy = pd.read_feather('./raw_data/mini_toy_completed_exist_rephrased.feather')
-        # df_toy = pd.read_feather('./raw_data/toy_completed_exist_triplet.feather')
+        df_toy = pd.read_feather('./raw_data/toy_completed_exist_triplet.feather')
 
         return toy_img_dir, df_toy
 
@@ -196,11 +206,11 @@ if __name__ == '__main__':
     image_path_dict, multimodal_feature_tensor = get_multimodal_feature(image_text_metadata_loader, model, mode)
 
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
-    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_{mode}_embeds_{phase}_random_crop.pt")
+    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_{mode}_embeds_{phase}_RandomHorizontalFlip.pt")
     save_tensor(multimodal_feature_tensor,
-                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_random_crop.pt')
-    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_random_crop.json")
+                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_RandomHorizontalFlip.pt')
+    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_RandomHorizontalFlip.json")
     save_json(image_path_dict,
-              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_random_crop.json')
+              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_RandomHorizontalFlip.json')
 
 
