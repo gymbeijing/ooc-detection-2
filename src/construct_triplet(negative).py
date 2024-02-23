@@ -5,13 +5,14 @@ import numpy as np
 
 if __name__ == '__main__':
     train_df = pd.read_feather('./raw_data/train_completed_exist.feather')
-    toy_df = pd.read_feather('./raw_data/toy_completed_exist.feather')
+    # toy_df = pd.read_feather('./raw_data/toy_completed_exist.feather')
     list_of_negatives = []
     nan_series = pd.Series(np.nan, index=['id', 'full_text', 'image_id', 'filename', 'falsified', 'topic', 'exists'], name=-1)
     print(nan_series)
     nan_cnt = 0
 
-    for index, row in tqdm(toy_df.iterrows(), desc='iteration'):
+    # for index, row in tqdm(toy_df.iterrows(), desc='iteration'):
+    for index, row in tqdm(train_df.iterrows(), desc='iteration'):
         id = int(row['id'])
         falsified = row['falsified']
         topic = row['topic']
@@ -39,4 +40,4 @@ if __name__ == '__main__':
 
     negative_df = pd.DataFrame(list_of_negatives)
     negative_df_reset = negative_df.reset_index()
-    negative_df_reset.to_feather('./raw_data/toy_completed_exist_negative.feather')
+    negative_df_reset.to_feather('./raw_data/train_completed_exist_negative.feather')

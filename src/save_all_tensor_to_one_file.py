@@ -59,7 +59,7 @@ class NewsDataset(Dataset):
     def __getitem__(self, idx):
         item = self.df.iloc[idx]
         # caption = item['full_text_random_swap']  # perturbed caption
-        # caption = item['full_text_perturb']  # perturbed caption
+        # caption = item['full_text_perturb']  # perturbed caption, synonym replacement
         caption = item['full_text']  # original caption
         # caption = item['rephrased_gpt4']   # for mini_toy df
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
@@ -207,11 +207,11 @@ if __name__ == '__main__':
     image_path_dict, multimodal_feature_tensor = get_multimodal_feature(image_text_metadata_loader, model, mode)
 
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
-    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_{mode}_embeds_{phase}_GaussianBlur.pt")
+    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_{mode}_embeds_{phase}_synonym_replacement_GaussianBlur.pt")
     save_tensor(multimodal_feature_tensor,
-                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_GaussianBlur.pt')
-    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json")
+                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_synonym_replacement_GaussianBlur.pt')
+    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_synonym_replacement_GaussianBlur.json")
     save_json(image_path_dict,
-              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json')
+              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_synonym_replacement_GaussianBlur.json')
 
 

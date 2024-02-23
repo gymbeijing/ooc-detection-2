@@ -3,6 +3,7 @@
 
 '''
 Converts caption and image in the dataframe to multimodal embeddings
+Just to run save all tensor in the meantime, to accelerate
 
 python -m src.save_all_tensor_to_one_file_copy --phase PHASE --base_model BASE_MODEL --mode MODE
 '''
