@@ -3,9 +3,8 @@
 
 '''
 Converts caption and image in the dataframe to multimodal embeddings
-Just to run save all tensor in the meantime, to accelerate
 
-python -m src.save_all_tensor_to_one_file_copy --phase PHASE --base_model BASE_MODEL --mode MODE
+python -m src.save_all_tensor_to_one_file_copy2 --phase PHASE --base_model BASE_MODEL --mode MODE
 '''
 
 import torch
@@ -47,8 +46,9 @@ class NewsDataset(Dataset):
         self.vis_processors = vis_processors
         self.txt_processors = txt_processors
         self.df = df
-        self.transforms = transforms.Compose([transforms.RandomHorizontalFlip(p=0.5)
-                                    #   
+        self.transforms = transforms.Compose([transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5.)),
+                                    #   transforms.RandomResizedCrop(size=(224, 224), antialias=True),
+                                    #   v2.RandomHorizontalFlip(p=0.5),
                                     #   transforms.ToDtype(torch.float32, scale=True),
                                     #   transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                       ])
@@ -58,15 +58,15 @@ class NewsDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.df.iloc[idx]
-        # caption = item['full_text_random_crop']  # perturbed caption
-        # caption = item['full_text_perturb']  # perturbed caption
+        # caption = item['full_text_random_swap']  # perturbed caption
+        # caption = item['full_text_perturb']  # perturbed caption, synonym replacement
         caption = item['full_text']  # original caption
         # caption = item['rephrased_gpt4']   # for mini_toy df
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
         caption = remove_punc(remove_url(caption))  # remove url & punctuation from the tokenized caption
 
-        img_filename = item['filename_negative']   # negative sample's image filename
-        # img_filename = item['filename']
+        # img_filename = item['filename_negative']   # negative sample's image filename
+        img_filename = item['filename']
         image_path = os.path.join(self.img_dir, img_filename)
 
         raw_image = Image.open(image_path).convert('RGB')
@@ -115,7 +115,7 @@ def get_img_dir_and_df(phase):
     if phase == 'toy' or phase == 'mini_toy':
         toy_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist_augmented.feather')
-        # df_toy = pd.read_feather('./raw_data/toy_completed_exist_random_crop_triplet.feather')
+        # df_toy = pd.read_feather('./raw_data/toy_completed_exist_random_swap_triplet.feather')
         # df_toy = pd.read_feather('./raw_data/toy_completed_exist.feather')
         # df_toy = pd.read_feather('./raw_data/mini_toy_completed_exist_rephrased.feather')
         df_toy = pd.read_feather('./raw_data/toy_completed_exist_triplet.feather')
@@ -209,11 +209,11 @@ if __name__ == '__main__':
     image_path_dict, multimodal_feature_tensor = get_multimodal_feature(image_text_metadata_loader, model, mode)
 
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
-    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_{mode}_embeds_{phase}_negative.pt")
+    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_{mode}_embeds_{phase}_original.pt")
     save_tensor(multimodal_feature_tensor,
-                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_negative.pt')
-    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_negative.json")
+                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_original.pt')
+    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_original.json")
     save_json(image_path_dict,
-              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_negative.json')
+              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_original.json')
 
 

@@ -102,12 +102,14 @@ def get_img_dir_and_df(phase):
         return val_img_dir, df_val
     if phase == 'train':
         train_img_dir = '/import/network-temp/yimengg/data/twitter-comms/train/images/train_image_ids'
-        df_train = pd.read_csv('raw_data/train_completed.csv', index_col=0)
+        # df_train = pd.read_csv('raw_data/train_completed.csv', index_col=0)
+        logger.info("Reading dataframe from ./raw_data/train_completed_exist_gaussian_blur_triplet.feather")
+        df_train = pd.read_feather('./raw_data/train_completed_exist_gaussian_blur_triplet.feather')
 
-        df_train['exists'] = df_train['filename'].apply(
-            lambda filename: os.path.exists(os.path.join(train_img_dir, filename)))
-        delete_row = df_train[df_train["exists"] == False].index
-        df_train = df_train.drop(delete_row)
+        # df_train['exists'] = df_train['filename'].apply(
+        #     lambda filename: os.path.exists(os.path.join(train_img_dir, filename)))
+        # delete_row = df_train[df_train["exists"] == False].index
+        # df_train = df_train.drop(delete_row)
 
         return train_img_dir, df_train
     if phase == 'toy' or phase == 'mini_toy':
@@ -207,11 +209,11 @@ if __name__ == '__main__':
     image_path_dict, multimodal_feature_tensor = get_multimodal_feature(image_text_metadata_loader, model, mode)
 
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
-    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_{mode}_embeds_{phase}_synonym_replacement_GaussianBlur.pt")
+    logger.info(f"Saving tensor to {root_dir}tensor/{base_model}_{mode}_embeds_{phase}_GaussianBlur.pt")
     save_tensor(multimodal_feature_tensor,
-                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_synonym_replacement_GaussianBlur.pt')
-    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_synonym_replacement_GaussianBlur.json")
+                root_dir+f'tensor/{base_model}_{mode}_embeds_{phase}_GaussianBlur.pt')
+    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json")
     save_json(image_path_dict,
-              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_synonym_replacement_GaussianBlur.json')
+              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json')
 
 
