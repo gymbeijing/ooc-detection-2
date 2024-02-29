@@ -216,12 +216,15 @@ if __name__ == '__main__':
     logger.info(f"Saving tensor to {root_dir}/tensor/{base_model}_{split}_{mode}_embeds_{phase}_GaussianBlur.pt")
     save_tensor(multimodal_feature_tensor,
                 f'{root_dir}/tensor/{base_model}_{split}_{mode}_embeds_{phase}_GaussianBlur.pt')
+    
     logger.info(f"Saving dictionary to {root_dir}/metadata/{base_model}_{split}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json")
     save_json(image_path_dict,
               f'{root_dir}/metadata/{base_model}_{split}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json')
-    logger.info(f"Saving list to {root_dir}/label/{base_model}_{split}_{mode}_label_{phase}_GaussianBlur.json")
+    
+    logger.info(f"Saving list to {root_dir}/label/{base_model}_{split}_{mode}_label_{phase}_GaussianBlur.pt")
     save_tensor(label_tensor,
               f'{root_dir}/label/{base_model}_{split}_{mode}_label_{phase}_GaussianBlur.pt')
+    
     logger.info(f"Saving dictionary to {root_dir}/news_source/{base_model}_{split}_{mode}_news_source_{phase}_GaussianBlur.json")
     save_json(news_source_dict,
               f'{root_dir}/news_source/{base_model}_{split}_{mode}_news_source_{phase}_GaussianBlur.json')
