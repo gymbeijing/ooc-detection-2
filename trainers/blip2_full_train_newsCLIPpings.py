@@ -21,7 +21,7 @@ import argparse
 from dataset.newsCLIPpingsDataset import get_dataloader_2
 
 """
-python -m trainers.blip2_full_train_newsCLIPpings --bs 256 --epochs 10 --target_domain semantics_clip_text_text
+python -m trainers.blip2_full_train_newsCLIPpings --bs 256 --epochs 10 --target_agency bbc
 """
 
 # Logger

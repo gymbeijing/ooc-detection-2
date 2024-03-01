@@ -60,7 +60,7 @@ class NewsDataset(Dataset):
 
         raw_image = Image.open(image_path).convert('RGB')
         ### for image augmentation ###
-        raw_image = self.transforms(raw_image)
+        # raw_image = self.transforms(raw_image)
         ##############################
         image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
         text_input = txt_processors["eval"](caption)
@@ -213,19 +213,19 @@ if __name__ == '__main__':
     image_path_dict, multimodal_feature_tensor, label_tensor, news_source_dict = get_multimodal_feature(image_text_metadata_loader, model, mode)
 
     root_dir = '/import/network-temp/yimengg/NewsCLIPpings/processed_data'
-    logger.info(f"Saving tensor to {root_dir}/tensor/{base_model}_{split}_{mode}_embeds_{phase}_GaussianBlur.pt")
+    logger.info(f"Saving tensor to {root_dir}/tensor/{base_model}_{split}_{mode}_embeds_{phase}_original.pt")
     save_tensor(multimodal_feature_tensor,
-                f'{root_dir}/tensor/{base_model}_{split}_{mode}_embeds_{phase}_GaussianBlur.pt')
+                f'{root_dir}/tensor/{base_model}_{split}_{mode}_embeds_{phase}_original.pt')
     
-    logger.info(f"Saving dictionary to {root_dir}/metadata/{base_model}_{split}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json")
-    save_json(image_path_dict,
-              f'{root_dir}/metadata/{base_model}_{split}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json')
+    # logger.info(f"Saving dictionary to {root_dir}/metadata/{base_model}_{split}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json")
+    # save_json(image_path_dict,
+    #           f'{root_dir}/metadata/{base_model}_{split}_{mode}_idx_to_image_path_{phase}_GaussianBlur.json')
     
-    logger.info(f"Saving list to {root_dir}/label/{base_model}_{split}_{mode}_label_{phase}_GaussianBlur.pt")
-    save_tensor(label_tensor,
-              f'{root_dir}/label/{base_model}_{split}_{mode}_label_{phase}_GaussianBlur.pt')
+    # logger.info(f"Saving list to {root_dir}/label/{base_model}_{split}_{mode}_label_{phase}_GaussianBlur.pt")
+    # save_tensor(label_tensor,
+    #           f'{root_dir}/label/{base_model}_{split}_{mode}_label_{phase}_GaussianBlur.pt')
     
-    logger.info(f"Saving dictionary to {root_dir}/news_source/{base_model}_{split}_{mode}_news_source_{phase}_GaussianBlur.json")
-    save_json(news_source_dict,
-              f'{root_dir}/news_source/{base_model}_{split}_{mode}_news_source_{phase}_GaussianBlur.json')
+    # logger.info(f"Saving dictionary to {root_dir}/news_source/{base_model}_{split}_{mode}_news_source_{phase}_GaussianBlur.json")
+    # save_json(news_source_dict,
+    #           f'{root_dir}/news_source/{base_model}_{split}_{mode}_news_source_{phase}_GaussianBlur.json')
     # print(news_source_dict)

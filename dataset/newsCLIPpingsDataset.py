@@ -34,6 +34,7 @@ class NewsCLIPpingsDataset(Dataset):
         if target_agency in agencies and phase=="train":
             row_excluded = [i for i, x in enumerate(self.news_source) if x == target_agency]
             self.row_kept = self.row_kept.difference(row_excluded)
+        # print(len(row_excluded))
         
         self.row_kept = list(self.row_kept)
 
@@ -123,5 +124,5 @@ def get_dataloader_2(target_agency, shuffle, batch_size, phase='test'):
         return test_loader, test_data.__len__()
 
 if __name__ == "__main__":
-    dataloader, length = get_dataloader('semantics_clip_text_text', True, 256, 'test')
+    dataloader, length = get_dataloader_2('washington_post', True, 256, 'test')
     print(length)
