@@ -32,7 +32,7 @@ class NewsCLIPpingsDataset(Dataset):
         agencies = ["bbc", "guardian", "washington_post", "usa_today"]
         
         if target_agency in agencies and phase=="train":
-            row_excluded = [i for i, x in enumerate(self.news_source) if x == target_agency]
+            row_excluded = [i for i, x in enumerate(self.news_source) if x != target_agency]
             self.row_kept = self.row_kept.difference(row_excluded)
         # print(len(row_excluded))
         
@@ -64,7 +64,7 @@ def get_dataloader(target_domain, shuffle, batch_size, phase='test'):
         source_domain_datasets = []
         for source_domain in source_domain_list:
             print(f"source domain: {source_domain}")
-            multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{source_domain}_multimodal_embeds_{phase}_GaussianBlur.pt'
+            multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{source_domain}_multimodal_embeds_{phase}_original.pt'
             label_path = f'{root_dir}/label/blip-2_{source_domain}_multimodal_label_{phase}_GaussianBlur.pt'
             news_source_path = f'{root_dir}/news_source/blip-2_{source_domain}_multimodal_news_source_{phase}_GaussianBlur.json'
             dataset = NewsCLIPpingsDataset(data_dir, source_domain, img_dir, multimodal_embeds_path, label_path, news_source_path, phase)
@@ -76,7 +76,7 @@ def get_dataloader(target_domain, shuffle, batch_size, phase='test'):
                                        batch_size=batch_size)
         return train_loader, train_data.__len__()
     if phase=='test':
-        multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{target_domain}_multimodal_embeds_{phase}_GaussianBlur.pt'
+        multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{target_domain}_multimodal_embeds_{phase}_original.pt'
         label_path = f'{root_dir}/label/blip-2_{target_domain}_multimodal_label_{phase}_GaussianBlur.pt'
         news_source_path = f'{root_dir}/news_source/blip-2_{target_domain}_multimodal_news_source_{phase}_GaussianBlur.json'
         test_data = NewsCLIPpingsDataset(data_dir, target_domain, img_dir, multimodal_embeds_path, label_path, news_source_path, phase)
@@ -95,7 +95,7 @@ def get_dataloader_2(target_agency, shuffle, batch_size, phase='test'):
         split_datasets = []
         for split in split_list:
             print(f"split: {split}")
-            multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'
+            multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
             label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'
             news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'
             dataset = NewsCLIPpingsDataset(data_dir, split, target_agency, img_dir, multimodal_embeds_path, label_path, news_source_path, phase)
@@ -111,7 +111,7 @@ def get_dataloader_2(target_agency, shuffle, batch_size, phase='test'):
         split_datasets = []
         for split in split_list:
             print(f"split: {split}")
-            multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'
+            multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
             label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'
             news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'
             dataset = NewsCLIPpingsDataset(data_dir, split, target_agency, img_dir, multimodal_embeds_path, label_path, news_source_path, phase)
