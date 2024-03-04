@@ -8,11 +8,10 @@ import torch
 
 
 class NewsCLIPpingsDataset(Dataset):
-    def __init__(self, data_dir, split_name, target_agency, img_dir, multimodal_embeds_path, label_path, news_source_path, phase="test"):
+    def __init__(self, target_agency, img_dir, multimodal_embeds_path, label_path, news_source_path, phase="test"):
         """
         Args:
-            data_dir (string): directory that stores the dataset
-            split_name (string): {merged_balanced, person_sbert_text_text, scene_resnet_place, semantics_clip_text_image, semantics_clip_text_text}
+            target_agency (string): target domain
             img_dir (string): directory containing the images
             multimodal_embeds_path (string): file path that stores the blip-2 embeddings
             label_path (string): directory that stores the labels
@@ -20,7 +19,6 @@ class NewsCLIPpingsDataset(Dataset):
         """
 
         self.img_dir = img_dir
-        self.split_name = split_name
         # self.data = load_json(os.path.join(data_dir, split_name, f"{phase}.json"))["annotations"]
         self.target_agency = target_agency
         self.multimodal_embeds = load_tensor(multimodal_embeds_path)
@@ -32,7 +30,7 @@ class NewsCLIPpingsDataset(Dataset):
         agencies = ["bbc", "guardian", "washington_post", "usa_today"]
         
         if target_agency in agencies and phase=="train":
-            row_excluded = [i for i, x in enumerate(self.news_source) if x != target_agency]
+            row_excluded = [i for i, x in enumerate(self.news_source) if x == target_agency]
             self.row_kept = self.row_kept.difference(row_excluded)
         # print(len(row_excluded))
         
@@ -91,14 +89,15 @@ def get_dataloader_2(target_agency, shuffle, batch_size, phase='test'):
     data_dir = '/import/network-temp/yimengg/NewsCLIPpings/news_clippings/data/'
     img_dir = '/import/network-temp/yimengg/NewsCLIPpings/visual_news/origin'
     if phase=='train':
+        print(f"phase: {phase}")
         split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']
         split_datasets = []
         for split in split_list:
-            print(f"split: {split}")
+            print(f"      split: {split}")
             multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
             label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'
             news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'
-            dataset = NewsCLIPpingsDataset(data_dir, split, target_agency, img_dir, multimodal_embeds_path, label_path, news_source_path, phase)
+            dataset = NewsCLIPpingsDataset(target_agency, img_dir, multimodal_embeds_path, label_path, news_source_path, phase)
             split_datasets.append(dataset)
         
         train_data = data.ConcatDataset(split_datasets)
@@ -107,14 +106,15 @@ def get_dataloader_2(target_agency, shuffle, batch_size, phase='test'):
                                        batch_size=batch_size)
         return train_loader, train_data.__len__()
     if phase=='test':
+        print(f"phase: {phase}")
         split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']
         split_datasets = []
         for split in split_list:
-            print(f"split: {split}")
+            print(f"      split: {split}")
             multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
             label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'
             news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'
-            dataset = NewsCLIPpingsDataset(data_dir, split, target_agency, img_dir, multimodal_embeds_path, label_path, news_source_path, phase)
+            dataset = NewsCLIPpingsDataset(target_agency, img_dir, multimodal_embeds_path, label_path, news_source_path, phase)
             split_datasets.append(dataset)
         
         test_data = data.ConcatDataset(split_datasets)
