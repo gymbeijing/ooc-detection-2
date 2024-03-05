@@ -47,10 +47,10 @@ class NewsCLIPpingsDatasetConDATriplet(Dataset):
         self.row_kept = set(range(self.original_multimodal_embeds.shape[0]))
 
         # Exclude target domain
-        # if self.phase == 'train':
+        if self.phase == 'train':
         # print(f"phase: {self.phase}, excluded domain: {self.target_domain}")
-        row_excluded = [i for i, x in enumerate(self.domain_labels) if x in self.target_domain]
-        self.row_kept = self.row_kept.difference(row_excluded)
+            row_excluded = [i for i, x in enumerate(self.domain_labels) if x in self.target_domain]
+            self.row_kept = self.row_kept.difference(row_excluded)
 
         self.row_kept = list(self.row_kept)
 
@@ -93,15 +93,6 @@ def get_dataloader(cfg, target_domain, shuffle, phase='test'):   # to be put int
         split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']
         split_datasets = []
         for split in split_list:
-            # print(f"      split: {split}")
-            # original_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
-            # positive_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'
-            # negative_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'   # placeholder
-            # label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'   # original and positive share the labels
-            # news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'
-            # target_domain = target_domain
-            # dataset = NewsCLIPpingsDatasetConDATriplet(img_dir, original_multimodal_embeds_path, positive_multimodal_embeds_path, negative_multimodal_embeds_path, label_path, news_source_path, target_domain, phase)
-            # split_datasets.append(dataset)
             dataset = get_dataset(root_dir=root_dir, data_dir=data_dir, img_dir=img_dir, split=split, phase=phase, target_domain=target_domain)
             split_datasets.append(dataset)
 
@@ -111,19 +102,10 @@ def get_dataloader(cfg, target_domain, shuffle, phase='test'):   # to be put int
         train_loader = data.DataLoader(train_dataset, batch_sampler=batch_sampler)   # cannot be shuffled
         return train_loader, train_dataset.__len__()
     else:  # phase=='val'
-        print(f"phase: {phase}")
+        # print(f"phase: {phase}")
         split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']
         split_datasets = []
         for split in split_list:
-            # print(f"      split: {split}")
-            # original_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
-            # positive_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'
-            # negative_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'   # placeholder
-            # label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'   # original and positive share the labels
-            # news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'
-            # target_domain = target_domain
-            # dataset = NewsCLIPpingsDatasetConDATriplet(img_dir, original_multimodal_embeds_path, positive_multimodal_embeds_path, negative_multimodal_embeds_path, label_path, news_source_path, target_domain, phase)
-            # split_datasets.append(dataset)
             dataset = get_dataset(root_dir=root_dir, data_dir=data_dir, img_dir=img_dir, split=split, phase=phase, target_domain=target_domain)
             split_datasets.append(dataset)
 

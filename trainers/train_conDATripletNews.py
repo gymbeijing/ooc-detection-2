@@ -23,6 +23,8 @@ from dataset.newsCLIPpingsDatasetConDATriplet import get_dataloader
 from configs.configConDANews import ConfigConDANews
 from torch.utils.tensorboard import SummaryWriter
 
+import numpy as np
+
 import sys
 sys.path.insert(0,os.getcwd())   # inserts the current working directory at the beginning of the search path
 torch.manual_seed(int(1001))
@@ -192,7 +194,15 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
     model.eval()
 
     validation_accuracy = 0
+    bbc_validation_accuracy = 0
+    guardian_validation_accuracy = 0
+    usa_today_validation_accuracy = 0
+    washington_post_validation_accuracy = 0
     validation_epoch_size = 0
+    bbc_epoch_size = 0
+    guardian_epoch_size = 0
+    usa_today_epoch_size = 0
+    washington_post_epoch_size = 0
     validation_loss = 0
 
     records = [record for v in range(votes) for record in tqdm(loader, desc=f'Preloading data ... {v}')]
@@ -204,7 +214,8 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             logit_votes = []
             # print(example)
             for data in example:
-                emb, labels = data["original_multimodal_emb"], data["original_label"]
+                # print(data)
+                emb, labels, domain_labels = data["original_multimodal_emb"], data["original_label"], data["domain_label"]
                 emb, labels = emb.to(device), labels.to(device)
                 batch_size = emb.shape[0]
 
@@ -219,16 +230,39 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
                 losses.append(loss)
                 logit_votes.append(softmax_logits)
 
+            # print(len(losses)) # 1
+            # print(len(logit_votes)) # 1
+            bbc_ind = np.array([i for i, d_label in enumerate(domain_labels) if d_label=="bbc"])
+            guardian_ind = np.array([i for i, d_label in enumerate(domain_labels) if d_label=="guardian"])
+            usa_today_ind = np.array([i for i, d_label in enumerate(domain_labels) if d_label=="usa_today"])
+            washington_post_ind = np.array([i for i, d_label in enumerate(domain_labels) if d_label=="washington_post"])
+
             loss = torch.stack(losses).mean(dim=0)
             logits = torch.stack(logit_votes).mean(dim=0)
-
+            
             batch_accuracy = accuracy_sum(logits, labels)
             validation_accuracy += batch_accuracy
             validation_epoch_size += batch_size
             validation_loss += loss.item() * batch_size
 
+            bbc_batch_accuracy = accuracy_sum(logits[bbc_ind], labels[bbc_ind])
+            bbc_validation_accuracy += bbc_batch_accuracy
+            guardian_batch_accuracy = accuracy_sum(logits[guardian_ind], labels[guardian_ind])
+            guardian_validation_accuracy += guardian_batch_accuracy
+            usa_today_batch_accuracy = accuracy_sum(logits[usa_today_ind], labels[usa_today_ind])
+            usa_today_validation_accuracy += usa_today_batch_accuracy
+            washington_post_batch_accuracy = accuracy_sum(logits[washington_post_ind], labels[washington_post_ind])
+            washington_post_validation_accuracy += washington_post_batch_accuracy
+            
+            bbc_epoch_size += bbc_ind.shape[0]
+            guardian_epoch_size += guardian_ind.shape[0]
+            usa_today_epoch_size += usa_today_ind.shape[0]
+            washington_post_epoch_size += washington_post_ind.shape[0]
 
-            loop.set_postfix(loss=loss.item(), acc=validation_accuracy / validation_epoch_size)
+
+            loop.set_postfix(loss=loss.item(), acc=validation_accuracy / validation_epoch_size, 
+                             bbc_acc=bbc_validation_accuracy / bbc_epoch_size, guardian_acc=guardian_validation_accuracy / guardian_epoch_size,
+                             usa_today_acc=usa_today_validation_accuracy / usa_today_epoch_size, washington_post_acc=washington_post_validation_accuracy / washington_post_epoch_size)
 
     return {
         "validation/accuracy": validation_accuracy,

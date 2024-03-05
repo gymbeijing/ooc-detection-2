@@ -18,7 +18,7 @@ import numpy as np
 import logging
 import argparse
 
-from dataset.newsCLIPpingsDataset import get_dataloader_2
+from dataset.newsCLIPpingsDataset import get_dataloader_3
 
 """
 python -m trainers.blip2_full_train_newsCLIPpings --bs 256 --epochs 10 --target_agency bbc
@@ -141,16 +141,38 @@ def test(net, iterator, criterion, device):
         total_loss = 0
         num_correct = dict()
         num_total = dict()
+        topics = {
+            # "arts_culture": ["arts_culture", "culture", "film", "music", "artsanddesign"],
+            # "world": ["world"], 
+            # "international_relations": ["international_relations"], 
+            "law_crime": ["law_crime", "law"],
+            # "science_technology": ["science_technology", "technology", "science"],
+            # "football": ["football", "sport", "sports"],
+            # "politics_elections": ["politics_elections", "politics"],
+            # "business": ["business", "business_economy"],
+            "media": ["media"], 
+            # "environment": ["environment"],
+            # "fashion": ["fashion"],
+            # "education": ['education'],
+            # "money": ['money'],
+            # "travel": ['travel'],
+            "education": ['education'],
+            "books": ['books'],
+            "society": ['society']
+            }
         num_correct["all"] = 0
         num_total["all"] = 0
-        num_correct["bbc"] = 0
-        num_total["bbc"] = 0
-        num_correct["guardian"] = 0
-        num_total["guardian"] = 0
-        num_correct["usa_today"] = 0
-        num_total["usa_today"] = 0
-        num_correct["washington_post"] = 0
-        num_total["washington_post"] = 0
+        # num_correct["bbc"] = 0
+        # num_total["bbc"] = 0
+        # num_correct["guardian"] = 0
+        # num_total["guardian"] = 0
+        # num_correct["usa_today"] = 0
+        # num_total["usa_today"] = 0
+        # num_correct["washington_post"] = 0
+        # num_total["washington_post"] = 0
+        for topic in topics.keys():
+            num_correct[topic] = 0
+            num_total[topic] = 0
 
         y_pred_list = []
         y_true_list = []
@@ -182,28 +204,40 @@ def test(net, iterator, criterion, device):
             num_total["all"] += cur_batch_size
 
             # Compute topic-wise performance
-            topic_labels = batch["news_source"]
-            topic_list = ["bbc", "guardian", "usa_today", "washington_post"]
+            # topic_labels = batch["news_source"]
+            # topic_list = ["bbc", "guardian", "usa_today", "washington_post"]
 
-            for topic in topic_list:
+            topic_labels = batch["topic"]
+
+            # for topic in topic_list:
+            #     inds = []
+            #     for ind, topic_label in enumerate(topic_labels):
+            #         if topic in topic_label:
+            #             inds.append(ind)
+            #     num_total[topic] += len(inds)
+            #     inds = np.array(inds)
+            #     num_correct[topic] += sum(top_pred[inds] == y[inds])
+
+            for topic in topics.keys():
                 inds = []
                 for ind, topic_label in enumerate(topic_labels):
-                    if topic in topic_label:
+                    if topic_label in topics[topic]:
                         inds.append(ind)
                 num_total[topic] += len(inds)
                 inds = np.array(inds)
                 num_correct[topic] += sum(top_pred[inds] == y[inds])
 
-            # if i % 1000 == 0:
-            #     logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (
-            #         i, num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
-        logger.info("Overall testing accuracy %.4f, bbc testing accuracy %.4f, guardian testing accuracy %.4f, "
-                    "usa_today testing accuracy %.4f, washington_post testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
-                                                                    num_correct["bbc"] / num_total["bbc"],
-                                                                    num_correct["guardian"] / num_total["guardian"],
-                                                                    num_correct["usa_today"] / num_total["usa_today"],
-                                                                    num_correct["washington_post"] / num_total["washington_post"],
-                                                                    total_loss / num_total["all"]))
+        # logger.info("Overall testing accuracy %.4f, bbc testing accuracy %.4f, guardian testing accuracy %.4f, "
+        #             "usa_today testing accuracy %.4f, washington_post testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
+        #                                                             num_correct["bbc"] / num_total["bbc"],
+        #                                                             num_correct["guardian"] / num_total["guardian"],
+        #                                                             num_correct["usa_today"] / num_total["usa_today"],
+        #                                                             num_correct["washington_post"] / num_total["washington_post"],
+        #                                                             total_loss / num_total["all"]))
+                
+        logger.info("Overall testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
+        for topic in topics.keys():
+            logger.info(f"{topic} testing accuracy %.4f" % (num_correct[topic] / (num_total[topic] + 0.000001)))
 
     return
 
@@ -212,7 +246,8 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--bs", type=int, required=True, help="batch size")
     p.add_argument("--epochs", type=int, required=True, help="number of training epochs")
-    p.add_argument("--target_agency", type=str, required=True, help="{'bbc', 'guardian', 'usa_today', 'washington_post'}")
+    # p.add_argument("--target_agency", type=str, required=True, help="{'bbc', 'guardian', 'usa_today', 'washington_post'}")
+    p.add_argument("--target_domain", type=str, required=True, help="topics")
 
     args = p.parse_args()
     return args
@@ -223,7 +258,7 @@ if __name__ == '__main__':
     args = parse_args()
     BATCH_SIZE = args.bs
     EPOCHS = args.epochs
-    target_agency = args.target_agency
+    target_domain = args.target_domain
 
     # Set up device to use
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
@@ -232,11 +267,12 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading training data")
-    train_iterator, train_len = get_dataloader_2(target_agency=target_agency, shuffle=True, batch_size=BATCH_SIZE, phase='train')
+    # train_iterator, train_len = get_dataloader_2(target_agency=target_agency, shuffle=True, batch_size=BATCH_SIZE, phase='train')
+    train_iterator, train_len = get_dataloader_3(target_domain=target_domain, shuffle=True, batch_size=BATCH_SIZE, phase='train')
     logger.info(f"Found {train_len} items in the training dataset")
 
     logger.info("Loading testing data")
-    test_iterator, test_len = get_dataloader_2(target_agency=target_agency, shuffle=False, batch_size=BATCH_SIZE, phase='test')
+    test_iterator, test_len = get_dataloader_3(target_domain=target_domain, shuffle=False, batch_size=BATCH_SIZE, phase='test')
     logger.info(f"Found {test_len} items in valid data")
 
     logger.info("Start training the model")
