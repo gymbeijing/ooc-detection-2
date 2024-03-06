@@ -22,6 +22,7 @@ from dataset.newsCLIPpingsDataset import get_dataloader_3
 
 """
 python -m trainers.blip2_full_train_newsCLIPpings --bs 256 --epochs 10 --target_agency bbc
+python -m trainers.blip2_full_train_newsCLIPpings --bs 256 --epochs 10 --target_domain uk-news
 """
 
 # Logger
@@ -158,7 +159,10 @@ def test(net, iterator, criterion, device):
             # "travel": ['travel'],
             "education": ['education'],
             "books": ['books'],
-            "society": ['society']
+            "society": ['society'],
+            "edinburgh": ['edinburgh'],
+            "leeds": ["leeds"],
+            "stage": ["stage"],
             }
         num_correct["all"] = 0
         num_total["all"] = 0

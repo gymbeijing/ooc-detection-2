@@ -43,7 +43,10 @@ class NewsCLIPpingsDataset(Dataset):
                   "media",
                   "education",
                   "books",
-                  "society"]
+                  "society",
+                  "edinburgh",
+                  "leeds",
+                  "stage"]
         # if target_domain in topics and phase=="train":
         if phase=="train":
             print(f"target_domain: {target_domain}")

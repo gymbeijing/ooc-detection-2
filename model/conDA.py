@@ -513,12 +513,12 @@ class ContrastiveLearningLossZModule(nn.Module):
         else:
             if use_ce_perturb:   # lambda_w: 0.5, lambda_mmd: 1.0
                 loss = (1 - self.lambda_w) * (src_LCE_real + src_LCE_perturb) / 2 \
-                       + self.lambda_w * (src_lctr + tgt_lctr) / 2 \
+                       + 100 * self.lambda_w * (src_lctr + tgt_lctr) / 2 \
                        + lambda_mmd * mmd \
                     #    + src_ltriplet   # triplet loss  # commented out for newsclipping experiments
             else:
                 loss = (1 - self.lambda_w) * (src_LCE_real) \
-                       + self.lambda_w * (src_lctr + tgt_lctr) / 2 \
+                       + 100 * self.lambda_w * (src_lctr + tgt_lctr) / 2 \
                        + lambda_mmd * mmd \
                     #    + src_ltriplet  # triplet loss
 
