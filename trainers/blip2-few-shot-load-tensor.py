@@ -20,6 +20,9 @@ from utils.helper import save_tensor, load_tensor, load_json
 from dataset.twitterCOMMsDataset import TwitterCOMMsDataset
 from model.linearClassifier import LinearClassifier
 
+from sklearn.metrics import f1_score
+import numpy as np
+
 # Logger
 logger = logging.getLogger()
 logging.basicConfig(
@@ -114,6 +117,7 @@ def test(net, iterator, criterion, device):
         total_loss = 0
         num_correct = dict()
         num_total = dict()
+        f1 = dict()
         num_correct["all"] = 0
         num_total["all"] = 0
         num_correct["climate"] = 0
@@ -125,6 +129,10 @@ def test(net, iterator, criterion, device):
 
         y_pred_list = []
         y_true_list = []
+        f1["climate"] = 0
+        f1["covid"] = 0
+        f1["military"] = 0
+        topic_label_list = []
         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
             inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
@@ -145,8 +153,8 @@ def test(net, iterator, criterion, device):
             cur_batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(cur_batch_size)
 
-            y_pred_list.append(y_preds)  # [bs, 2]?
-            y_true_list.append(y)  # [bs, 2]?
+            y_pred_list.append(top_pred)  # [bs, 2]?
+            y_true_list.append(y.cpu())  # [bs, 2]?
 
             # Compute overall performance
             num_correct["all"] += sum(top_pred == y).item()
@@ -154,6 +162,7 @@ def test(net, iterator, criterion, device):
 
             # Compute topic-wise performance
             topic_labels = batch["topic"]
+            topic_label_list += topic_labels
             topic_list = ["climate", "covid", "military"]
 
             for topic in topic_list:
@@ -166,14 +175,20 @@ def test(net, iterator, criterion, device):
                 num_correct[topic] += sum(top_pred[inds] == y[inds])
 
             if i % 1000 == 0:
-                logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (
+                logger.info("%d-th batch: Testing accuracy %.4f, loss: %.4f" % (
                     i, num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
-        logger.info("Overall testing accuracy %.3f, climate testing accuracy %.3f, covid testing accuracy %.3f, "
-                    "military testing accuracy %.3f, loss: %.3f" % (num_correct["all"] / num_total["all"],
+                
+        for topic in topic_list:
+            inds = [idx for idx, topic_fullname in enumerate(topic_label_list) if topic in topic_fullname]
+            f1[topic] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
+
+        logger.info("Overall testing accuracy %.4f, climate testing accuracy %.4f, covid testing accuracy %.4f, "
+                    "military testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
                                                                     num_correct["climate"] / num_total["climate"],
                                                                     num_correct["covid"] / num_total["covid"],
                                                                     num_correct["military"] / num_total["military"],
                                                                     total_loss / num_total["all"]))
+        print(f1)
 
     return torch.cat(y_pred_list, dim=0), torch.cat(y_true_list, dim=0)
 
@@ -216,18 +231,18 @@ if __name__ == '__main__':
     #                                  metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
     #                                  few_shot_topic=[few_shot_topic]
     #                                  )  # took ~one hour to construct the dataset
-    # train_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
-    #                                  img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
-    #                                  multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
-    #                                  metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_valid.json',
-    #                                  few_shot_topic=few_shot_topic
-    #                                  )  # small sample
-    train_data = TwitterCOMMsDataset(feather_path='./raw_data/toy_completed_exist.feather',
-                                     img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
-                                     multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_toy.pt',
-                                     metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_toy.json',
-                                     few_shot_topic=few_shot_topic,
+    train_data = TwitterCOMMsDataset(feather_path='./raw_data/train_completed_exist.feather',
+                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
+                                     multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
+                                     metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
+                                     few_shot_topic=few_shot_topic
                                      )  # small sample
+    # train_data = TwitterCOMMsDataset(feather_path='./raw_data/toy_completed_exist.feather',
+    #                                  img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
+    #                                  multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_toy.pt',
+    #                                  metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_toy.json',
+    #                                  few_shot_topic=few_shot_topic,
+    #                                  )  # small sample
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")

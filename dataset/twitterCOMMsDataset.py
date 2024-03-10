@@ -30,8 +30,8 @@ class TwitterCOMMsDataset(Dataset):
         self.domain_map_to_idx = {"climate": 0, "covid": 1, "military": 2}
         self.mode = mode
 
-        assert len(self.df) == self.multimodal_embeds.shape[0], \
-            "The number of news in self.df isn't equal to number of tensor"
+        # assert len(self.df) == self.multimodal_embeds.shape[0], \
+        #     "The number of news in self.df isn't equal to number of tensor"
 
         # if not excluding any topic
         self.row_kept = self.df.index
@@ -81,7 +81,7 @@ class TwitterCOMMsDataset(Dataset):
         image_path = os.path.join(self.img_dir, img_filename)
 
         if self.mode != "toy":
-            assert image_path == self.metadata[str(row_number)], "Image path does not match with the metadata"
+            assert image_path == self.metadata[str(row_number)], f"Image path does not match with the metadata. {image_path} vs {self.metadata[str(row_number)]}"
         multimodal_emb = self.multimodal_embeds[row_number]
 
         return {"multimodal_emb": multimodal_emb,

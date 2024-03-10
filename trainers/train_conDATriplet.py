@@ -24,6 +24,9 @@ from dataset.twitterCOMMsDatasetConDATriplet import get_dataloader
 from configs.configConDA import ConfigConDA
 from torch.utils.tensorboard import SummaryWriter
 
+from sklearn.metrics import f1_score
+import numpy as np
+
 import sys
 sys.path.insert(0,os.getcwd())   # inserts the current working directory at the beginning of the search path
 torch.manual_seed(int(1001))
@@ -122,6 +125,16 @@ def accuracy_sum(logits, labels):
     return (classification == labels).float().sum().item()
 
 
+def return_classification(logits, labels):
+    if list(logits.shape) == list(labels.shape) + [2]:   # logits: [bs, 2], labels: [bs, ]
+        # 2-d outputs
+        classification = (logits[..., 0] < logits[..., 1]).long().flatten()
+    else:   # logits: [bs,]
+        classification = (logits > 0).long().flatten()   # ?
+    assert classification.shape == labels.shape
+    return classification.cpu(), labels.cpu()
+
+
 def train(model: nn.Module, optimizer, device: str, src_loader: DataLoader,
           tgt_loader: DataLoader, summary_writer: SummaryWriter, desc='Train', lambda_w=0.5):
     model.train()
@@ -174,7 +187,7 @@ def train(model: nn.Module, optimizer, device: str, src_loader: DataLoader,
             train_loss += loss.item() * batch_size
 
             loop.set_postfix(loss=loss.item(), src_acc=src_train_accuracy / train_epoch_size,
-                             tgt_acc=tgt_train_accuracy / train_epoch_size,
+                             tgt_acc="{:.4f}".format(tgt_train_accuracy / train_epoch_size),
                              mmd=output_dic.mmd.item(), 
                              src_LCE_real=output_dic.src_ce_loss_real.item(),
                              src_LCE_perturb=output_dic.src_ce_loss_perturb.item(),
@@ -197,6 +210,8 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
     validation_epoch_size = 0
     validation_loss = 0
 
+    validation_f1 = 0
+
     records = [record for v in range(votes) for record in tqdm(loader, desc=f'Preloading data ... {v}')]
     records = [[records[v * len(loader) + i] for v in range(votes)] for i in range(len(loader))]
 
@@ -204,6 +219,8 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
         for example in loop:
             losses = []
             logit_votes = []
+            targets = []
+            outputs = []
             # print(example)
             for data in example:
                 emb, labels = data["original_multimodal_emb"], data["original_label"]
@@ -228,9 +245,17 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             validation_accuracy += batch_accuracy
             validation_epoch_size += batch_size
             validation_loss += loss.item() * batch_size
+            
+            classifications, labels = return_classification(logits, labels)
+            targets.append(labels)
+            outputs.append(classifications)
 
-
-            loop.set_postfix(loss=loss.item(), acc=validation_accuracy / validation_epoch_size)
+            loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size))
+        
+        outputs = np.concatenate(outputs)
+        targets = np.concatenate(targets)
+        validation_f1 = f1_score(targets, outputs, average='macro')
+        print(f"f1: {validation_f1}")
 
     return {
         "validation/accuracy": validation_accuracy,
