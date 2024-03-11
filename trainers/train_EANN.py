@@ -1,27 +1,31 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import torch
-from PIL import Image
-import requests
-from lavis.models import load_model_and_preprocess
+"""
+python -m trainers.train_EANN --batch_size 256 --event_num 4 --max_epochs 10 --hidden_dim 768 --base_model blip-2 --threshold 0.3 --few_shot_topic military
+"""
 
-from torch import nn
-import pandas as pd
+import argparse
+import json
+import logging
 import os
 
-from tqdm.auto import tqdm, trange
-
-from sklearn.metrics import classification_report
-import json
-
-from torch.utils.data import Dataset
+import numpy as np
+import pandas as pd
+import torch
 import torch.utils.data as data
+from torch import nn
 from torch import optim
 from torch.autograd import Variable
+from torch.utils.data import Dataset
+from tqdm.auto import tqdm
+
+from utils.helper import save_tensor, load_tensor, load_json
+from dataset.twitterCOMMsDataset import TwitterCOMMsDataset
+from model.linearClassifier import LinearClassifier
+
+from sklearn.metrics import f1_score
 import numpy as np
-from nltk.tokenize import TweetTokenizer
-import re, string
 
 import logging
 import argparse
@@ -35,70 +39,55 @@ logging.basicConfig(
     format="[%(asctime)s]:[%(processName)-11s]" + "[%(levelname)-s]:[%(name)s] %(message)s",
 )
 
+softmax = nn.Softmax(dim=1)
 
-# Define the Dataset class
-def load_tensor(filepath):
-    tensor = torch.load(filepath)
+# def train(train_iterator, val_iterator, device):
 
-    return tensor
+#     lr = 0.0001
+#     optimizer = optim.Adam(net.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=1e-5)
 
+#     criterion = nn.CrossEntropyLoss()
+#     criterion.to(device)
 
-def load_json(filepath):
-    with open(filepath, 'r') as fp:
-        json_data = json.load(fp)
+#     for epoch in range(EPOCHS):
+#         net.train()
+#         total_loss = 0
+#         num_correct = 0
+#         num_total = 0
+#         for i, batch in tqdm(enumerate(train_iterator, 0), desc='iterations'):
+#             text_inputs = batch["text_emb"].to(device)
+#             image_inputs = batch["image_emb"].to(device)
+#             labels = batch["label"].to(device)
+#             domain_labels = batch["domain_id"].to(device)
+#             text_inputs, image_inputs, labels, domain_labels = Variable(text_inputs), Variable(image_inputs), Variable(labels), Variable(domain_labels)
 
-    return json_data
+#             net.zero_grad()
+#             y_preds, domain_preds = net(text_inputs, image_inputs)
+#             loss = criterion(y_preds, labels) + criterion(domain_preds, domain_labels)
 
+#             loss.backward()
+#             optimizer.step()
 
-class TwitterCOMMsDataset(Dataset):
-    def __init__(self, csv_path, img_dir, text_embeds_path, image_embeds_path, metadata_path):
-        """
-        Args:
-            csv_path (string): Path to the {train_completed|val_completed}.csv file.
-            img_dir (string): Directory containing the images
-        """
-        if csv_path.split('.')[-1] == 'feather':
-            self.df = pd.read_feather(csv_path)
-        else:
-            self.df = pd.read_csv(csv_path, index_col=0)
-        self.img_dir = img_dir
+#             total_loss += loss.item()
 
-        self.df['exists'] = self.df['filename'].apply(lambda filename: os.path.exists(os.path.join(img_dir, filename)))
-        delete_row = self.df[self.df["exists"] == False].index
-        self.df = self.df.drop(delete_row)
-        self.text_embeds = load_tensor(text_embeds_path)
-        self.image_embeds = load_tensor(image_embeds_path)
-        self.metadata = load_json(metadata_path)
+#             _, top_pred = y_preds.topk(1, 1)
+#             y = labels.cpu()
+#             batch_size = y.shape[0]
+#             top_pred = top_pred.cpu().view(batch_size)
 
-        assert len(self.df) == self.text_embeds.shape[0], "Number of news in self.df isn't equal to number of tensor"
+#             num_correct += sum(top_pred == y).item()
+#             num_total += batch_size
 
-    def __len__(self):
-        return len(self.df)
+#             if i % 1000 == 0:
+#                 logger.info("Epoch [%d/%d] %d-th batch: Training accuracy: %.3f, loss: %.3f" % (
+#                 epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
 
-    def __getitem__(self, idx):
-        item = self.df.iloc[idx]
+#         logger.info("Epoch [%d/%d]: Training accuracy: %.3f, loss: %.3f" % (
+#         epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
 
-        img_filename = item['filename']
-        topic = item['topic']
-        falsified = int(item['falsified'])
-        label = np.array(falsified)
-        domain = topic.split('_')[0]
-        domain_mapping = {'climate': 0, 'covid': 1, 'military': 2}
-        difficulty = topic.split('_')[1]
+#         test(net, val_iterator, criterion, device)
 
-        image_path = os.path.join(self.img_dir, img_filename)
-
-        assert image_path == self.metadata[str(idx)], "Image path does not match with the metadata"
-        text_emb = self.text_embeds[idx]
-        image_emb = self.image_embeds[idx]
-
-        return {"text_emb": text_emb,
-                "image_emb": image_emb,
-                "topic": topic,
-                "label": label,
-                "domain": domain,
-                "domain_id": domain_mapping[domain],
-                "difficulty": difficulty}
+#     return net
 
 
 def train(train_iterator, val_iterator, device):
@@ -115,22 +104,35 @@ def train(train_iterator, val_iterator, device):
         num_correct = 0
         num_total = 0
         for i, batch in tqdm(enumerate(train_iterator, 0), desc='iterations'):
-            text_inputs = batch["text_emb"].to(device)
-            image_inputs = batch["image_emb"].to(device)
+            # Extract batch image and batch text inputs
+            inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
             domain_labels = batch["domain_id"].to(device)
-            text_inputs, image_inputs, labels, domain_labels = Variable(text_inputs), Variable(image_inputs), Variable(labels), Variable(domain_labels)
+            inputs, labels, domain_labels = Variable(inputs), Variable(labels), Variable(domain_labels)
 
+            # Get the output predictions
             net.zero_grad()
-            y_preds, domain_preds = net(text_inputs, image_inputs)
+            y_preds, domain_preds = net(inputs)
             loss = criterion(y_preds, labels) + criterion(domain_preds, domain_labels)
 
+            # Back-propagate and update the parameters
             loss.backward()
             optimizer.step()
 
+            # Compute total loss of the current epoch
             total_loss += loss.item()
 
-            _, top_pred = y_preds.topk(1, 1)
+            # Compute the number of correct predictions
+            # Implementation (1) Select the class with a higher predicted score, equiv. to threshold=0.5
+            # _, top_pred = y_preds.topk(1, 1)
+            # y = labels.cpu()
+            # batch_size = y.shape[0]
+            # top_pred = top_pred.cpu().view(batch_size)
+
+            # Implementation (2) If the predicted score (col=1) is higher than the threshold
+            top_pred = torch.zeros_like(labels)
+            y_preds = softmax(y_preds)
+            top_pred[y_preds[:, 1] >= threshold] = 1
             y = labels.cpu()
             batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(batch_size)
@@ -139,51 +141,138 @@ def train(train_iterator, val_iterator, device):
             num_total += batch_size
 
             if i % 1000 == 0:
-                logger.info("Epoch [%d/%d] %d-th batch: Training accuracy: %.3f, loss: %.3f" % (
-                epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
+                logger.info("Epoch [%d/%d] %d-th batch: training accuracy: %.3f, loss: %.3f" % (
+                    epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
 
-        logger.info("Epoch [%d/%d]: Training accuracy: %.3f, loss: %.3f" % (
-        epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
+        logger.info("Epoch [%d/%d]: training accuracy: %.3f, loss: %.3f" % (
+            epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
 
-        test(net, val_iterator, criterion, device)
+        test_pred, test_true = test(net, val_iterator, criterion, device)
+        assert test_pred.shape[0] == len(val_data), "test_pred.shape[0] is not equal to the length of val data"
+        assert test_true.shape[0] == len(val_data), "test_true.shape[0] is not equal to the length of val data"
 
     return net
 
 
+# def test(net, iterator, criterion, device):
+#     net.eval()
+
+#     with torch.no_grad():
+#         total_loss = 0
+#         num_correct = 0
+#         num_total = 0
+#         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
+#             text_inputs = batch["text_emb"].to(device)
+#             image_inputs = batch["image_emb"].to(device)
+#             labels = batch["label"].to(device)
+#             domain_labels = batch["domain_id"].to(device)
+#             text_inputs, image_inputs, labels, domain_labels = Variable(text_inputs), Variable(image_inputs), Variable(labels), Variable(domain_labels)
+
+#             y_preds, domain_preds = net(text_inputs, image_inputs)
+#             loss = criterion(y_preds, labels) + criterion(domain_preds, domain_labels)
+
+#             total_loss += loss.item()
+
+#             _, top_pred = y_preds.topk(1, 1)
+#             y = labels.cpu()
+#             batch_size = y.shape[0]
+#             top_pred = top_pred.cpu().view(batch_size)
+
+#             num_correct += sum(top_pred == y).item()
+#             num_total += batch_size
+
+#             if i % 1000 == 0:
+#                 logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (
+#                 i, num_correct / num_total, total_loss / num_total))
+
+#         logger.info("Testing accuracy %.3f, loss: %.3f" % (num_correct / num_total, total_loss / num_total))
+
+#     return
+
+
 def test(net, iterator, criterion, device):
     net.eval()
+    softmax = nn.Softmax(dim=1)
 
     with torch.no_grad():
         total_loss = 0
-        num_correct = 0
-        num_total = 0
+        num_correct = dict()
+        num_total = dict()
+        f1 = dict()
+        num_correct["all"] = 0
+        num_total["all"] = 0
+        num_correct["climate"] = 0
+        num_total["climate"] = 0
+        num_correct["covid"] = 0
+        num_total["covid"] = 0
+        num_correct["military"] = 0
+        num_total["military"] = 0
+
+        y_pred_list = []
+        y_true_list = []
+        f1["climate"] = 0
+        f1["covid"] = 0
+        f1["military"] = 0
+        topic_label_list = []
         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
-            text_inputs = batch["text_emb"].to(device)
-            image_inputs = batch["image_emb"].to(device)
+            inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
             domain_labels = batch["domain_id"].to(device)
-            text_inputs, image_inputs, labels, domain_labels = Variable(text_inputs), Variable(image_inputs), Variable(labels), Variable(domain_labels)
+            inputs, labels, domain_labels = Variable(inputs), Variable(labels), Variable(domain_labels)
 
-            y_preds, domain_preds = net(text_inputs, image_inputs)
+            # Get the output predictions
+            y_preds, domain_preds = net(inputs)
             loss = criterion(y_preds, labels) + criterion(domain_preds, domain_labels)
 
+            # Compute total loss of the current epoch
             total_loss += loss.item()
 
-            _, top_pred = y_preds.topk(1, 1)
+            # Compute the number of correct predictions
+            top_pred = torch.zeros_like(labels)
+            y_preds = softmax(y_preds)
+            top_pred[y_preds[:, 1] >= threshold] = 1
             y = labels.cpu()
-            batch_size = y.shape[0]
-            top_pred = top_pred.cpu().view(batch_size)
+            cur_batch_size = y.shape[0]
+            top_pred = top_pred.cpu().view(cur_batch_size)
 
-            num_correct += sum(top_pred == y).item()
-            num_total += batch_size
+            y_pred_list.append(top_pred)  # [bs, 2]?
+            y_true_list.append(y.cpu())  # [bs, 2]?
+
+            # Compute overall performance
+            num_correct["all"] += sum(top_pred == y).item()
+            num_total["all"] += cur_batch_size
+
+            # Compute topic-wise performance
+            topic_labels = batch["topic"]
+            topic_label_list += topic_labels
+            topic_list = ["climate", "covid", "military"]
+
+            for topic in topic_list:
+                inds = []
+                for ind, topic_label in enumerate(topic_labels):
+                    if topic in topic_label:
+                        inds.append(ind)
+                num_total[topic] += len(inds)
+                inds = np.array(inds)
+                num_correct[topic] += sum(top_pred[inds] == y[inds])
 
             if i % 1000 == 0:
-                logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (
-                i, num_correct / num_total, total_loss / num_total))
+                logger.info("%d-th batch: Testing accuracy %.4f, loss: %.4f" % (
+                    i, num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
+                
+        for topic in topic_list:
+            inds = [idx for idx, topic_fullname in enumerate(topic_label_list) if topic in topic_fullname]
+            f1[topic] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
 
-        logger.info("Testing accuracy %.3f, loss: %.3f" % (num_correct / num_total, total_loss / num_total))
+        logger.info("Overall testing accuracy %.4f, climate testing accuracy %.4f, covid testing accuracy %.4f, "
+                    "military testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
+                                                                    num_correct["climate"] / num_total["climate"],
+                                                                    num_correct["covid"] / num_total["covid"],
+                                                                    num_correct["military"] / num_total["military"],
+                                                                    total_loss / num_total["all"]))
+        print(f"f1: {f1}")
 
-    return
+    return torch.cat(y_pred_list, dim=0), torch.cat(y_true_list, dim=0)
 
 
 
@@ -192,6 +281,8 @@ if __name__ == '__main__':
     cfg = ConfigEANN()
     BATCH_SIZE = cfg.args.batch_size
     EPOCHS = cfg.args.max_epochs
+    threshold = cfg.args.threshold
+    few_shot_topic = cfg.args.few_shot_topic
 
 
     # Set up device to use
@@ -201,24 +292,18 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading training data")
-    # train_data = TwitterCOMMsDataset(csv_path='../raw_data/train_completed.csv',
-    #                                  img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
-    #                                  multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{base_model}_{mode}_embeds_train.pt',
-    #                                  metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_{mode}_idx_to_image_path_train.json')  # took ~one hour to construct the dataset
-    train_data = TwitterCOMMsDataset(csv_path='./raw_data/train_completed_exist_gaussian_blur_triplet.feather',
-                                   img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
-                                   text_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_{mode}_embeds_valid.pt',
-                                   image_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_{mode}_embeds_valid.pt',
-                                   metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_{mode}_idx_to_image_path_valid.json'
-                                   )
+    train_data = TwitterCOMMsDataset(feather_path='./raw_data/train_completed_exist.feather',
+                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
+                                     multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_train.pt',
+                                     metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
+                                     few_shot_topic=few_shot_topic)  # took ~one hour to construct the dataset
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
-    val_data = TwitterCOMMsDataset(csv_path='../raw_data/val_completed.csv',
+    val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
                                    img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
-                                   text_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/blip-2_unimodal_text_embeds_valid.pt',
-                                   image_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/blip-2_unimodal_image_embeds_valid.pt',
-                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/blip-2_unimodal_idx_to_image_path_valid.json'
+                                   multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
+                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_multimodal_idx_to_image_path_valid.json',
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 

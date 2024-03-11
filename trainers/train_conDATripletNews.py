@@ -23,6 +23,7 @@ from dataset.newsCLIPpingsDatasetConDATriplet import get_dataloader
 from configs.configConDANews import ConfigConDANews
 from torch.utils.tensorboard import SummaryWriter
 
+from sklearn.metrics import f1_score, classification_report
 import numpy as np
 
 import sys
@@ -123,6 +124,16 @@ def accuracy_sum(logits, labels):
     return (classification == labels).float().sum().item()
 
 
+def return_classification(logits, labels):
+    if list(logits.shape) == list(labels.shape) + [2]:   # logits: [bs, 2], labels: [bs, ]
+        # 2-d outputs
+        classification = (logits[..., 0] < logits[..., 1]).long().flatten()
+    else:   # logits: [bs,]
+        classification = (logits > 0).long().flatten()   # ?
+    assert classification.shape == labels.shape
+    return classification.cpu(), labels.cpu()
+
+
 def train(model: nn.Module, optimizer, device: str, src_loader: DataLoader,
           tgt_loader: DataLoader, summary_writer: SummaryWriter, desc='Train', lambda_w=0.5):
     model.train()
@@ -205,10 +216,15 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
     washington_post_epoch_size = 0
     validation_loss = 0
 
+    validation_f1 = 0
+
     records = [record for v in range(votes) for record in tqdm(loader, desc=f'Preloading data ... {v}')]
     records = [[records[v * len(loader) + i] for v in range(votes)] for i in range(len(loader))]
 
     with tqdm(records, desc=desc) as loop, torch.no_grad():
+        targets = []
+        outputs = []
+        domain_labels_list = []
         for example in loop:
             losses = []
             logit_votes = []
@@ -259,10 +275,21 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             usa_today_epoch_size += usa_today_ind.shape[0]
             washington_post_epoch_size += washington_post_ind.shape[0]
 
+            classifications, labels = return_classification(logits, labels)
+            targets.append(labels)
+            outputs.append(classifications)
+            domain_labels_list += list(domain_labels)
 
-            loop.set_postfix(loss=loss.item(), acc=validation_accuracy / validation_epoch_size, 
-                             bbc_acc=bbc_validation_accuracy / bbc_epoch_size, guardian_acc=guardian_validation_accuracy / guardian_epoch_size,
-                             usa_today_acc=usa_today_validation_accuracy / usa_today_epoch_size, washington_post_acc=washington_post_validation_accuracy / washington_post_epoch_size)
+
+            loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
+                             bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size),
+                             usa_today_acc="{:.4f}".format(usa_today_validation_accuracy / usa_today_epoch_size), washington_post_acc="{:.4f}".format(washington_post_validation_accuracy / washington_post_epoch_size))
+        
+        outputs = np.concatenate(outputs)
+        targets = np.concatenate(targets)
+        validation_f1 = f1_score(targets, outputs, average='macro')
+        print(f"f1: {validation_f1}")
+        print(classification_report(targets, outputs, target_names=domain_labels_list))
 
     return {
         "validation/accuracy": validation_accuracy,

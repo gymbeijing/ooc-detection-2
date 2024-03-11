@@ -142,41 +142,41 @@ def test(net, iterator, criterion, device):
         total_loss = 0
         num_correct = dict()
         num_total = dict()
-        topics = {
-            # "arts_culture": ["arts_culture", "culture", "film", "music", "artsanddesign"],
-            # "world": ["world"], 
-            # "international_relations": ["international_relations"], 
-            "law_crime": ["law_crime", "law"],
-            # "science_technology": ["science_technology", "technology", "science"],
-            # "football": ["football", "sport", "sports"],
-            # "politics_elections": ["politics_elections", "politics"],
-            # "business": ["business", "business_economy"],
-            "media": ["media"], 
-            # "environment": ["environment"],
-            # "fashion": ["fashion"],
-            # "education": ['education'],
-            # "money": ['money'],
-            # "travel": ['travel'],
-            "education": ['education'],
-            "books": ['books'],
-            "society": ['society'],
-            "edinburgh": ['edinburgh'],
-            "leeds": ["leeds"],
-            "stage": ["stage"],
-            }
+        # topics = {
+        #     # "arts_culture": ["arts_culture", "culture", "film", "music", "artsanddesign"],
+        #     # "world": ["world"], 
+        #     # "international_relations": ["international_relations"], 
+        #     "law_crime": ["law_crime", "law"],
+        #     # "science_technology": ["science_technology", "technology", "science"],
+        #     # "football": ["football", "sport", "sports"],
+        #     # "politics_elections": ["politics_elections", "politics"],
+        #     # "business": ["business", "business_economy"],
+        #     "media": ["media"], 
+        #     # "environment": ["environment"],
+        #     # "fashion": ["fashion"],
+        #     # "education": ['education'],
+        #     # "money": ['money'],
+        #     # "travel": ['travel'],
+        #     "education": ['education'],
+        #     "books": ['books'],
+        #     "society": ['society'],
+        #     "edinburgh": ['edinburgh'],
+        #     "leeds": ["leeds"],
+        #     "stage": ["stage"],
+        #     }
         num_correct["all"] = 0
         num_total["all"] = 0
-        # num_correct["bbc"] = 0
-        # num_total["bbc"] = 0
-        # num_correct["guardian"] = 0
-        # num_total["guardian"] = 0
-        # num_correct["usa_today"] = 0
-        # num_total["usa_today"] = 0
-        # num_correct["washington_post"] = 0
-        # num_total["washington_post"] = 0
-        for topic in topics.keys():
-            num_correct[topic] = 0
-            num_total[topic] = 0
+        num_correct["bbc"] = 0
+        num_total["bbc"] = 0
+        num_correct["guardian"] = 0
+        num_total["guardian"] = 0
+        num_correct["usa_today"] = 0
+        num_total["usa_today"] = 0
+        num_correct["washington_post"] = 0
+        num_total["washington_post"] = 0
+        # for topic in topics.keys():
+        #     num_correct[topic] = 0
+        #     num_total[topic] = 0
 
         y_pred_list = []
         y_true_list = []
@@ -208,40 +208,40 @@ def test(net, iterator, criterion, device):
             num_total["all"] += cur_batch_size
 
             # Compute topic-wise performance
-            # topic_labels = batch["news_source"]
-            # topic_list = ["bbc", "guardian", "usa_today", "washington_post"]
+            topic_labels = batch["news_source"]
+            topic_list = ["bbc", "guardian", "usa_today", "washington_post"]
 
             topic_labels = batch["topic"]
 
-            # for topic in topic_list:
-            #     inds = []
-            #     for ind, topic_label in enumerate(topic_labels):
-            #         if topic in topic_label:
-            #             inds.append(ind)
-            #     num_total[topic] += len(inds)
-            #     inds = np.array(inds)
-            #     num_correct[topic] += sum(top_pred[inds] == y[inds])
-
-            for topic in topics.keys():
+            for topic in topic_list:
                 inds = []
                 for ind, topic_label in enumerate(topic_labels):
-                    if topic_label in topics[topic]:
+                    if topic in topic_label:
                         inds.append(ind)
                 num_total[topic] += len(inds)
                 inds = np.array(inds)
                 num_correct[topic] += sum(top_pred[inds] == y[inds])
 
-        # logger.info("Overall testing accuracy %.4f, bbc testing accuracy %.4f, guardian testing accuracy %.4f, "
-        #             "usa_today testing accuracy %.4f, washington_post testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
-        #                                                             num_correct["bbc"] / num_total["bbc"],
-        #                                                             num_correct["guardian"] / num_total["guardian"],
-        #                                                             num_correct["usa_today"] / num_total["usa_today"],
-        #                                                             num_correct["washington_post"] / num_total["washington_post"],
-        #                                                             total_loss / num_total["all"]))
+            # for topic in topics.keys():
+            #     inds = []
+            #     for ind, topic_label in enumerate(topic_labels):
+            #         if topic_label in topics[topic]:
+            #             inds.append(ind)
+            #     num_total[topic] += len(inds)
+            #     inds = np.array(inds)
+            #     num_correct[topic] += sum(top_pred[inds] == y[inds])
+
+        logger.info("Overall testing accuracy %.4f, bbc testing accuracy %.4f, guardian testing accuracy %.4f, "
+                    "usa_today testing accuracy %.4f, washington_post testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
+                                                                    num_correct["bbc"] / num_total["bbc"],
+                                                                    num_correct["guardian"] / num_total["guardian"],
+                                                                    num_correct["usa_today"] / num_total["usa_today"],
+                                                                    num_correct["washington_post"] / num_total["washington_post"],
+                                                                    total_loss / num_total["all"]))
                 
         logger.info("Overall testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
-        for topic in topics.keys():
-            logger.info(f"{topic} testing accuracy %.4f" % (num_correct[topic] / (num_total[topic] + 0.000001)))
+        # for topic in topics.keys():
+        #     logger.info(f"{topic} testing accuracy %.4f" % (num_correct[topic] / (num_total[topic] + 0.000001)))
 
     return
 

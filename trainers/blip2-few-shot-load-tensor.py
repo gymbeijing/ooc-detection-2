@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""
+python -m trainers.blip2-few-shot-load-tensor --bs 256 --epochs 10 --few_shot_topic TOPIC --base_model blip-2
+"""
+
 import argparse
 import json
 import logging

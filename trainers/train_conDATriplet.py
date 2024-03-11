@@ -216,11 +216,11 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
     records = [[records[v * len(loader) + i] for v in range(votes)] for i in range(len(loader))]
 
     with tqdm(records, desc=desc) as loop, torch.no_grad():
+        targets = []
+        outputs = []
         for example in loop:
             losses = []
             logit_votes = []
-            targets = []
-            outputs = []
             # print(example)
             for data in example:
                 emb, labels = data["original_multimodal_emb"], data["original_label"]

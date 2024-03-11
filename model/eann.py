@@ -33,33 +33,36 @@ class EANN(nn.Module):
         C = args.class_num
         self.hidden_size = args.hidden_dim
 
-        self.dropout = nn.Dropout(args.dropout)
+        self.dropout = nn.Dropout(0.2)
 
-        self.image_fc1 = nn.Linear(args.in_dim,  self.hidden_size)   # (vis-fc): 256 -> 256
-        self.text_fc1 = nn.Linear(args.in_dim,  self.hidden_size)   # (txt-fc): 256 -> 256
+        # self.image_fc1 = nn.Linear(args.in_dim,  self.hidden_size)   # (vis-fc): 768 -> 768
+        # self.text_fc1 = nn.Linear(args.in_dim,  self.hidden_size)   # (txt-fc): 256 -> 256
+        self.image_text_fc1 = nn.Linear(args.in_dim, self.hidden_size)
 
         ## Class  Classifier
         self.class_classifier = nn.Sequential()
-        self.class_classifier.add_module('c_fc1', nn.Linear(2 * self.hidden_size, 2))   # (pred-fc): 512 -> 2
+        self.class_classifier.add_module('c_fc1', nn.Linear(self.hidden_size, 2))   # (pred-fc): 768 -> 2
         self.class_classifier.add_module('c_softmax', nn.Softmax(dim=1))
 
         ###Event Classifier
         self.domain_classifier = nn.Sequential()
-        self.domain_classifier.add_module('d_fc1', nn.Linear(2 * self.hidden_size, self.hidden_size))   # (adv-fc1): 512 -> 256
+        self.domain_classifier.add_module('d_fc1', nn.Linear(self.hidden_size, self.hidden_size))   # (adv-fc1): 768->768
         self.domain_classifier.add_module('d_relu1', nn.LeakyReLU(True))
         self.domain_classifier.add_module('d_fc2', nn.Linear(self.hidden_size, self.event_num))   # (adv-fc2):  256 -> 2
         self.domain_classifier.add_module('d_softmax', nn.Softmax(dim=1))
     
 
-    def forward(self, text, image):
+    def forward(self, text_image):
         """
         text: [bs, 256]
         image: [bs, 256]
         """
 
-        image = F.leaky_relu(self.image_fc1(image))   # (vis-fc)
-        text = F.leaky_relu(self.text_fc1(text))   # replace Text-CNN with linear layer (text-fc)
-        text_image = torch.cat((text, image), 1)   # [512, 1]?
+        # image = F.leaky_relu(self.image_fc1(image))   # (vis-fc)
+        # text = F.leaky_relu(self.text_fc1(text))   # replace Text-CNN with linear layer (text-fc)
+        # text_image = torch.cat((text, image), 1)   # [512, 1]?
+
+        text_image = F.leaky_relu(self.image_text_fc1(text_image))
 
         ### Fake or real
         class_output = self.class_classifier(text_image)

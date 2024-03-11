@@ -27,11 +27,11 @@ class TwitterCOMMsDataset(Dataset):
         # self.df = self.df.reset_index(drop=True)   # set index from 0 to len(df)-1, now index<->row number, i.e. df.iloc[row number]=df.iloc[index]
 
         self.df = pd.read_feather(feather_path)   # already drop the non-exists
-        self.domain_map_to_idx = {"climate": 0, "covid": 1, "military": 2}
+        self.domain_map_to_idx = {"climate": 0, "covid": 1, "military": 2, "cross": 3}
         self.mode = mode
 
-        # assert len(self.df) == self.multimodal_embeds.shape[0], \
-        #     "The number of news in self.df isn't equal to number of tensor"
+        assert len(self.df) == self.multimodal_embeds.shape[0], \
+            "The number of news in self.df isn't equal to number of tensor"
 
         # if not excluding any topic
         self.row_kept = self.df.index
@@ -58,9 +58,9 @@ class TwitterCOMMsDataset(Dataset):
             # self.row_kept = row_all.difference(row_excluded)
             self.row_kept = self.row_kept.difference(row_excluded)
 
-        self.df['is_cross'] = self.df['topic'].apply(lambda topic: 'cross' in topic)
-        row_excluded = self.df[self.df["is_cross"] == True].index
-        self.row_kept = self.row_kept.difference(row_excluded)
+        # self.df['is_cross'] = self.df['topic'].apply(lambda topic: 'cross' in topic)
+        # row_excluded = self.df[self.df["is_cross"] == True].index
+        # self.row_kept = self.row_kept.difference(row_excluded)
 
     def __len__(self):
         return len(self.row_kept)
