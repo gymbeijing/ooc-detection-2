@@ -287,9 +287,13 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
         
         outputs = np.concatenate(outputs)
         targets = np.concatenate(targets)
-        validation_f1 = f1_score(targets, outputs, average='macro')
-        print(f"f1: {validation_f1}")
-        print(classification_report(targets, outputs, target_names=domain_labels_list))
+        f1 = dict()
+        print(f"overall f1: {validation_f1}")
+        domain_list = ['bbc', 'guardian', 'usa_today', 'washington_post']
+        for domain in domain_list:
+            inds = [idx for idx, domain_name in enumerate(domain_labels_list) if domain_name == domain]
+            f1[domain] = f1_score(targets[inds], outputs[inds], average='macro')
+        print(f1)
 
     return {
         "validation/accuracy": validation_accuracy,

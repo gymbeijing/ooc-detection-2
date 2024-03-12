@@ -17,8 +17,10 @@ import numpy as np
 
 import logging
 import argparse
+from sklearn.metrics import f1_score
+import numpy as np
 
-from dataset.newsCLIPpingsDataset import get_dataloader_3
+from dataset.newsCLIPpingsDataset import get_dataloader_2
 
 """
 python -m trainers.blip2_full_train_newsCLIPpings --bs 256 --epochs 10 --target_agency bbc
@@ -142,6 +144,9 @@ def test(net, iterator, criterion, device):
         total_loss = 0
         num_correct = dict()
         num_total = dict()
+        targets = []
+        outputs = []
+        domain_labels_list = []
         # topics = {
         #     # "arts_culture": ["arts_culture", "culture", "film", "music", "artsanddesign"],
         #     # "world": ["world"], 
@@ -183,6 +188,8 @@ def test(net, iterator, criterion, device):
         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
             inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
+            domain_labels = batch["news_source"]
+            domain_labels_list += list(domain_labels)
             inputs, labels = Variable(inputs), Variable(labels)
 
             # Get the output predictions
@@ -200,8 +207,8 @@ def test(net, iterator, criterion, device):
             cur_batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(cur_batch_size)
 
-            y_pred_list.append(y_preds)  # [bs, 2]?
-            y_true_list.append(y)  # [bs, 2]?
+            y_pred_list.append(top_pred)  # [bs, 2]?
+            y_true_list.append(y.cpu())  # [bs, 2]?
 
             # Compute overall performance
             num_correct["all"] += sum(top_pred == y).item()
@@ -211,7 +218,7 @@ def test(net, iterator, criterion, device):
             topic_labels = batch["news_source"]
             topic_list = ["bbc", "guardian", "usa_today", "washington_post"]
 
-            topic_labels = batch["topic"]
+            # topic_labels = batch["topic"]
 
             for topic in topic_list:
                 inds = []
@@ -230,7 +237,12 @@ def test(net, iterator, criterion, device):
             #     num_total[topic] += len(inds)
             #     inds = np.array(inds)
             #     num_correct[topic] += sum(top_pred[inds] == y[inds])
-
+        f1 = dict()
+        domain_list = ['bbc', 'guardian', 'usa_today', 'washington_post']
+        for domain in domain_list:
+            inds = [idx for idx, domain_name in enumerate(domain_labels_list) if domain_name == domain]
+            f1[domain] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
+        print(f1)
         logger.info("Overall testing accuracy %.4f, bbc testing accuracy %.4f, guardian testing accuracy %.4f, "
                     "usa_today testing accuracy %.4f, washington_post testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
                                                                     num_correct["bbc"] / num_total["bbc"],
@@ -239,7 +251,7 @@ def test(net, iterator, criterion, device):
                                                                     num_correct["washington_post"] / num_total["washington_post"],
                                                                     total_loss / num_total["all"]))
                 
-        logger.info("Overall testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
+        # logger.info("Overall testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
         # for topic in topics.keys():
         #     logger.info(f"{topic} testing accuracy %.4f" % (num_correct[topic] / (num_total[topic] + 0.000001)))
 
@@ -250,8 +262,8 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--bs", type=int, required=True, help="batch size")
     p.add_argument("--epochs", type=int, required=True, help="number of training epochs")
-    # p.add_argument("--target_agency", type=str, required=True, help="{'bbc', 'guardian', 'usa_today', 'washington_post'}")
-    p.add_argument("--target_domain", type=str, required=True, help="topics")
+    p.add_argument("--target_agency", type=str, required=True, help="{'bbc', 'guardian', 'usa_today', 'washington_post'}")
+    # p.add_argument("--target_domain", type=str, required=True, help="topics")
 
     args = p.parse_args()
     return args
@@ -262,7 +274,7 @@ if __name__ == '__main__':
     args = parse_args()
     BATCH_SIZE = args.bs
     EPOCHS = args.epochs
-    target_domain = args.target_domain
+    target_agency = args.target_agency
 
     # Set up device to use
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
@@ -271,12 +283,12 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading training data")
-    # train_iterator, train_len = get_dataloader_2(target_agency=target_agency, shuffle=True, batch_size=BATCH_SIZE, phase='train')
-    train_iterator, train_len = get_dataloader_3(target_domain=target_domain, shuffle=True, batch_size=BATCH_SIZE, phase='train')
+    train_iterator, train_len = get_dataloader_2(target_agency=target_agency, shuffle=True, batch_size=BATCH_SIZE, phase='train')
+    # train_iterator, train_len = get_dataloader_2(target_agency=target_domain, shuffle=True, batch_size=BATCH_SIZE, phase='train')
     logger.info(f"Found {train_len} items in the training dataset")
 
     logger.info("Loading testing data")
-    test_iterator, test_len = get_dataloader_3(target_domain=target_domain, shuffle=False, batch_size=BATCH_SIZE, phase='test')
+    test_iterator, test_len = get_dataloader_2(target_agency=target_agency, shuffle=False, batch_size=BATCH_SIZE, phase='test')
     logger.info(f"Found {test_len} items in valid data")
 
     logger.info("Start training the model")

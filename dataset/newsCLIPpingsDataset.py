@@ -8,7 +8,7 @@ import torch
 
 
 class NewsCLIPpingsDataset(Dataset):
-    def __init__(self, target_domain, img_dir, multimodal_embeds_path, label_path, news_source_path, topic_path, phase="test"):
+    def __init__(self, target_agency, img_dir, multimodal_embeds_path, label_path, news_source_path, phase="test"):
         """
         Args:
             target_domain (string): target domain
@@ -20,15 +20,14 @@ class NewsCLIPpingsDataset(Dataset):
 
         self.img_dir = img_dir
         # self.data = load_json(os.path.join(data_dir, split_name, f"{phase}.json"))["annotations"]
-        self.target_domain = target_domain
+        self.target_agency = target_agency
         self.multimodal_embeds = load_tensor(multimodal_embeds_path)
         self.label = load_tensor(label_path).type(torch.LongTensor)
         self.news_source = load_json(news_source_path)["news_source"]
-        self.topic = load_json(topic_path)["topic"]
         self.phase = phase
 
         self.row_kept = set(range(self.multimodal_embeds.shape[0]))
-        # agencies = ["bbc", "guardian", "washington_post", "usa_today"]
+        agencies = ["bbc", "guardian", "washington_post", "usa_today"]
         # topics = ["arts_culture", "culture", "film", "music", "artsanddesign",
         #           "world", 
         #           "international_relations", 
@@ -39,39 +38,43 @@ class NewsCLIPpingsDataset(Dataset):
         #           "business", "business_economy",
         #           "media", 
         #           "environment"]
-        topics = ["law_crime", "law",
-                  "media",
-                  "education",
-                  "books",
-                  "society",
-                  "edinburgh",
-                  "leeds",
-                  "stage"]
+        # topics = ["law_crime", "law",
+        #           "media",
+        #           "education",
+        #           "books",
+        #           "society",
+        #           "edinburgh",
+        #           "leeds",
+        #           "stage"]
         # if target_domain in topics and phase=="train":
+        target_agency = target_agency.split(",")
+        # if target_agency in agencies and phase=="train":
         if phase=="train":
-            print(f"target_domain: {target_domain}")
-            # row_excluded = [i for i, x in enumerate(self.news_source) if x == target_domain]
-            row_excluded = [i for i, x in enumerate(self.topic) if x in target_domain or x not in topics]
+            # row_excluded = [i for i, x in enumerate(self.news_source) if x == target_agency or x == 'washington_post']
+            row_excluded = [i for i, x in enumerate(self.news_source) if x in target_agency]
+            # row_excluded = [i for i, x in enumerate(self.topic) if x in target_domain or x not in topics]
             self.row_kept = self.row_kept.difference(row_excluded)
         # print(len(row_excluded))
         
         self.row_kept = list(self.row_kept)
+        self.domain_map_to_idx = {"bbc": 0, "guardian": 1, "usa_today": 2, "washington_post": 3}
 
 
     def __len__(self):
         return len(self.row_kept)
     
     def __getitem__(self, idx):
+
         mapped_idx = self.row_kept[idx]
         multimodal_emb = self.multimodal_embeds[mapped_idx]
         falsified = self.label[mapped_idx]
         news_source = self.news_source[mapped_idx]
-        topic = self.topic[mapped_idx]
+        domain_id = self.domain_map_to_idx[news_source]
 
         return {"multimodal_emb": multimodal_emb, 
                 "label": falsified,
                 "news_source": news_source,
-                "topic": topic}
+                "domain_id": domain_id}
     
 
 def get_dataloader(target_domain, shuffle, batch_size, phase='test'):
