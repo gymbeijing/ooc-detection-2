@@ -86,6 +86,7 @@ class TwitterCOMMsUnimodalDataset(Dataset):
 
         return {"text_emb": self.text_embeds[row_number],
                 "image_emb": self.image_embeds[row_number],
+                "multimodal_emb": self.text_embeds[row_number] * self.image_embeds[row_number],
                 "topic": topic,
                 "label": label,
                 "domain_id": domain_id,

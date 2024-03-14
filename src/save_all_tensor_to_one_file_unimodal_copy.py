@@ -4,7 +4,7 @@
 '''
 Converts caption and image in the dataframe to multimodal embeddings
 
-python -m src.save_all_tensor_to_one_file_unimodal --phase PHASE --base_model BASE_MODEL --mode MODE
+python -m src.save_all_tensor_to_one_file_unimodal_copy --phase PHASE --base_model BASE_MODEL --mode MODE
 '''
 
 import torch
@@ -65,13 +65,13 @@ class NewsDataset(Dataset):
         caption = ' '.join(tt.tokenize(caption))  # tokenized caption
         caption = remove_punc(remove_url(caption))  # remove url & punctuation from the tokenized caption
 
-        # img_filename = item['filename_negative']   # negative sample's image filename
-        img_filename = item['filename']
+        img_filename = item['filename_negative']   # negative sample's image filename
+        # img_filename = item['filename']
         image_path = os.path.join(self.img_dir, img_filename)
 
         raw_image = Image.open(image_path).convert('RGB')
         # ### for image augmentation ###
-        raw_image = self.transforms(raw_image)
+        # raw_image = self.transforms(raw_image)
         # ##############################
         image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
         text_input = txt_processors["eval"](caption)
@@ -214,14 +214,14 @@ if __name__ == '__main__':
     image_path_dict, text_feature_tensor, image_feature_tensor = get_multimodal_feature(image_text_metadata_loader, model, mode)
 
     root_dir = '/import/network-temp/yimengg/data/twitter-comms/processed_data/'
-    logger.info(f"Saving text tensor to {root_dir}tensor/{base_model}_{mode}_text_embeds_{phase}_positive.pt")
+    logger.info(f"Saving text tensor to {root_dir}tensor/{base_model}_{mode}_text_embeds_{phase}_negative.pt")
     save_tensor(text_feature_tensor,
-                root_dir+f'tensor/{base_model}_{mode}_text_embeds_{phase}_positive.pt')
-    logger.info(f"Saving image tensor to {root_dir}tensor/{base_model}_{mode}_image_embeds_{phase}_positive.pt")
+                root_dir+f'tensor/{base_model}_{mode}_text_embeds_{phase}_negative.pt')
+    logger.info(f"Saving image tensor to {root_dir}tensor/{base_model}_{mode}_image_embeds_{phase}_negative.pt")
     save_tensor(image_feature_tensor,
-                root_dir+f'tensor/{base_model}_{mode}_image_embeds_{phase}_positive.pt')
-    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_positive.json")
+                root_dir+f'tensor/{base_model}_{mode}_image_embeds_{phase}_negative.pt')
+    logger.info(f"Saving dictionary to {root_dir}metadata/{base_model}_{mode}_idx_to_image_path_{phase}_negative.json")
     save_json(image_path_dict,
-              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_positive.json')
+              root_dir+f'metadata/{base_model}_{mode}_idx_to_image_path_{phase}_negative.json')
 
 

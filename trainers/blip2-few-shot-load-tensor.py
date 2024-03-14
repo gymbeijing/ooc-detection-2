@@ -22,6 +22,7 @@ from tqdm.auto import tqdm
 
 from utils.helper import save_tensor, load_tensor, load_json
 from dataset.twitterCOMMsDataset import TwitterCOMMsDataset
+from dataset.twitterCOMMsUnimodalDataset import TwitterCOMMsUnimodalDataset
 from model.linearClassifier import LinearClassifier
 
 from sklearn.metrics import f1_score
@@ -40,7 +41,7 @@ logging.basicConfig(
 
 
 def train(train_iterator, val_iterator, device):
-    net = LinearClassifier(768)
+    net = LinearClassifier(768)   # blip-2: 768
     net.cuda()
     net.train()
     net.weight_init(mean=0, std=0.02)
@@ -104,11 +105,11 @@ def train(train_iterator, val_iterator, device):
         assert test_pred.shape[0] == len(val_data), "test_pred.shape[0] is not equal to the length of val data"
         assert test_true.shape[0] == len(val_data), "test_true.shape[0] is not equal to the length of val data"
 
-        if epoch == EPOCHS - 1:
-            save_tensor(test_pred,
-                        root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_pred_fs_{few_shot_topic}_epoch_{epoch}.pt')
-            save_tensor(test_true,
-                        root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_true_fs_{few_shot_topic}_epoch_{epoch}.pt')
+        # if epoch == EPOCHS - 1:
+        #     save_tensor(test_pred,
+        #                 root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_pred_fs_{few_shot_topic}_epoch_{epoch}.pt')
+        #     save_tensor(test_true,
+        #                 root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_true_fs_{few_shot_topic}_epoch_{epoch}.pt')
 
     return net
 
@@ -235,25 +236,38 @@ if __name__ == '__main__':
     #                                  metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
     #                                  few_shot_topic=[few_shot_topic]
     #                                  )  # took ~one hour to construct the dataset
-    train_data = TwitterCOMMsDataset(feather_path='./raw_data/train_completed_exist.feather',
-                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
-                                     multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
-                                     metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
-                                     few_shot_topic=few_shot_topic
-                                     )  # small sample
+    # train_data = TwitterCOMMsDataset(feather_path='./raw_data/train_completed_exist.feather',
+    #                                  img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
+    #                                  multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_train.pt',
+    #                                  metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_idx_to_image_path_train.json',
+    #                                  few_shot_topic=few_shot_topic
+    #                                  )  # small sample
     # train_data = TwitterCOMMsDataset(feather_path='./raw_data/toy_completed_exist.feather',
     #                                  img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
     #                                  multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_toy.pt',
     #                                  metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_toy.json',
     #                                  few_shot_topic=few_shot_topic,
     #                                  )  # small sample
+    train_data = TwitterCOMMsUnimodalDataset(feather_path='./raw_data/train_completed_exist_gaussian_blur_triplet.feather',
+                                   img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
+                                   text_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_unimodal_text_embeds_train.pt',
+                                   image_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_unimodal_image_embeds_train.pt',
+                                   metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_unimodal_idx_to_image_path_train.json',
+                                   few_shot_topic=few_shot_topic
+                                   )
     logger.info(f"Found {train_data.__len__()} items in training data")
 
     logger.info("Loading valid data")
-    val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
+    # val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
+    #                                img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
+    #                                multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
+    #                                metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_valid.json'
+    #                                )
+    val_data = TwitterCOMMsUnimodalDataset(feather_path='./raw_data/val_completed_exist.feather',
                                    img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
-                                   multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_multimodal_embeds_valid.pt',
-                                   metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_multimodal_idx_to_image_path_valid.json'
+                                   text_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_unimodal_text_embeds_valid.pt',
+                                   image_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{base_model}_unimodal_image_embeds_valid.pt',
+                                   metadata_path=root_dir + f'twitter-comms/processed_data/metadata/{base_model}_unimodal_idx_to_image_path_valid.json'
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 
