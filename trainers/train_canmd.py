@@ -1,26 +1,23 @@
+"""
+python -m trainers.train_canmd --few_shot_topic military
+"""
 import numpy as np
 import random
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from transformers.optimization import AdamW, get_linear_schedule_with_warmup
 from sklearn.metrics import balanced_accuracy_score, f1_score, precision_score, recall_score
 from datetime import datetime
-
-from dataset import get_dataset
 # from dataloader import preprocess, tokenize, get_loader
 from configs.config_CANMD import *
 from tqdm import tqdm
-import json
 import os
 import logging
 import torch.utils.data as data
 from dataset.twitterCOMMsDataset import TwitterCOMMsDataset
 from model.canmd import ContrastiveModel
 from torch.autograd import Variable
+from torch.optim import AdamW
 
 # Logger
 logger = logging.getLogger()
@@ -77,7 +74,7 @@ def train(args):
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     if not args.output_dir:
-        args.output_dir = 'output'
+        args.output_dir = 'canmd_output'
     export_root = os.path.join(EXPERIMENT_ROOT_FOLDER, args.output_dir)
     if not os.path.exists(export_root):
         os.makedirs(export_root)
@@ -92,7 +89,7 @@ def train(args):
     
     global_step = 0
     print('***** Running training *****')
-    print('Batch size = %d', args.train_batchsize)
+    print('Batch size = %d', args.batch_size)
     print('Num steps = %d', t_total)
     best_bacc, best_acc, best_f1, _, _ = evaluation(args, model, val_dataloader)
     for epoch in range(1, args.num_train_epochs+1):
@@ -141,6 +138,7 @@ if __name__ == '__main__':
                                    img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
                                    multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{args.base_model}_multimodal_embeds_valid.pt',
                                    metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{args.base_model}_multimodal_idx_to_image_path_valid.json',
+                                   few_shot_topic=args.few_shot_topic
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 

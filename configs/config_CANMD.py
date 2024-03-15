@@ -12,8 +12,8 @@ parser.add_argument('--seed', default=42, type=int,
 # Model settings
 parser.add_argument("--output_dir", default=None, type=str,
                     help="The output directory where the model checkpoints and predictions will be written")
-parser.add_argument("base_model", default="blip-2", type=str)
-parser.add_argument("few_shot_topic", type=str)
+parser.add_argument("--base_model", default="blip-2", type=str)
+parser.add_argument("--few_shot_topic", type=str)
 
 
 

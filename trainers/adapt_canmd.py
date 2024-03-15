@@ -1,3 +1,6 @@
+"""
+python -m trainers.adapt_canmd --few_shot_topic military
+"""
 import numpy as np
 import random
 
@@ -9,7 +12,6 @@ from transformers.optimization import AdamW, get_linear_schedule_with_warmup
 from sklearn.metrics import balanced_accuracy_score, f1_score, precision_score, recall_score
 from datetime import datetime
 
-from dataset import get_dataset
 # from dataloader import preprocess, tokenize, get_loader
 from configs.config_CANMD import *
 from tqdm import tqdm
@@ -22,6 +24,7 @@ from model.canmd import ContrastiveModel
 from torch.autograd import Variable
 
 from torch.utils.data import DataLoader, RandomSampler
+from utils.utils_canmd import *
 
 # Logger
 logger = logging.getLogger()
@@ -78,19 +81,23 @@ def evaluation(args, model, eval_dataloader):
 def adapt(args):
     def sample_source_batch(args, target_labels, source_dataset, source_label_dict, source_pointer):
         ### to be modified ###
+        # sampling source batch
         output_idx = []
         for label in target_labels.tolist():
-            next_idx = source_pointer[label] % len(source_label_dict[label])
+            next_idx = source_pointer[label] % len(source_label_dict[label])   # random
             output_idx.append(source_label_dict[label][next_idx])
             source_pointer[label] += 1
 
-        all_input_ids, all_token_type_ids, all_attention_mask, labels  = [], [], [], []
+        # preparing inputs
+        embs, labels = [], []
         for idx in output_idx:
-            all_input_ids.append(source_dataset[idx][0].unsqueeze(0))
-            if 'roberta' not in args.lm_model:
-                all_token_type_ids.append(source_dataset[idx][1].unsqueeze(0))
-            all_attention_mask.append(source_dataset[idx][-2].unsqueeze(0))
-            labels.append(source_dataset[idx][-1].unsqueeze(0))
+            embs.append(source_dataset[idx]["multimodal_emb"])
+            labels.append(source_dataset[idx]["label"])
+            # all_input_ids.append(source_dataset[idx][0].unsqueeze(0))
+            # if 'roberta' not in args.lm_model:
+            #     all_token_type_ids.append(source_dataset[idx][1].unsqueeze(0))
+            # all_attention_mask.append(source_dataset[idx][-2].unsqueeze(0))
+            # labels.append(source_dataset[idx][-1].unsqueeze(0))
         
         all_input_ids = torch.vstack(all_input_ids)
         if 'roberta' not in args.lm_model:
@@ -98,31 +105,39 @@ def adapt(args):
         all_attention_mask = torch.vstack(all_attention_mask)
         labels = torch.vstack(labels).squeeze()
 
-        if 'roberta' not in args.lm_model:
-            return all_input_ids, all_token_type_ids, all_attention_mask, labels
-        else:
-            return all_input_ids, all_attention_mask, labels
+        embs = torch.cat(embs, dim=0)
+        labels = torch.cat(labels)
+
+        # if 'roberta' not in args.lm_model:
+        #     return all_input_ids, all_token_type_ids, all_attention_mask, labels
+        # else:
+        #     return all_input_ids, all_attention_mask, labels
+        return embs, labels
         ######
     
     fix_random_seed_as(args.seed)
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     if not args.output_dir:
-        args.output_dir = 'output'
+        args.output_dir = 'canmd_output'
     export_root = os.path.join(EXPERIMENT_ROOT_FOLDER, args.output_dir)
     if not os.path.exists(export_root):
         os.makedirs(export_root)
     
     model = ContrastiveModel(args)
-    model.load_state_dict(os.path.join(EXPERIMENT_ROOT_FOLDER, args.output_dir, 'pretrained_model.ckpt'))
+    model.load_state_dict(torch.load(os.path.join(EXPERIMENT_ROOT_FOLDER, args.output_dir, 'pretrained_model.ckpt')))
 
-    # source_pointer = [0] * 2
-    # source_label_dict = {0: [], 1: []}
+    source_pointer = [0] * 2
+    source_label_dict = {0: [], 1: []}
     # data, labels = get_dataset(args, 'train', args.source_data_type, args.source_data_path).load_dataset()
-    # for idx, label in enumerate(labels):
-    #     source_label_dict[label].append(idx)
-    # for key in source_label_dict.keys():
-    #     random.shuffle(source_label_dict[key])
+    labels = []
+    for idx in tqdm(range(len(src_train_data))):
+        # print(src_train_data[idx]["label"])
+        labels.append(int(src_train_data[idx]["label"]))
+    for idx, label in enumerate(labels):
+        source_label_dict[label].append(idx)
+    for key in source_label_dict.keys():
+        random.shuffle(source_label_dict[key])
     
     # inputs = preprocess(args, data)
     # all_input_ids, all_token_type_ids, all_attention_mask = tokenize(args, inputs, tokenizer)
@@ -144,14 +159,13 @@ def adapt(args):
     
     global_step = 0
     print('***** Running adaptation *****')
-    print('Batch size = {}'.format(args.train_batchsize))
+    print('Batch size = {}'.format(args.batch_size))
     print('Num steps = {}'.format(t_total))
     best_bacc, best_acc, best_f1, _, _ = evaluation(args, model, val_dataloader)
     for epoch in range(1, args.num_train_epochs+1):
         ### Get the psuedo labeled data ###
         filtered_data, pseudolabels = get_corrected_psuedolabels_model(
-                                        args, tokenizer, model, 
-                                        [args.target_data_type], [args.target_data_path], 
+                                        args, model, device=device,
                                         conf_threshold=args.conf_threshold)
         ### Prepare the target data with the pseudo label ###
         target_dataset = torch.utils.data.TensorDataset(
@@ -167,7 +181,7 @@ def adapt(args):
         model.train()
         for step, batch in enumerate(tqdm(target_dataloader, desc='Epoch {}'.format(epoch))):
             ### batch data ###
-            source_batch = sample_source_batch(args, batch[-1], source_dataset, source_label_dict, source_pointer)
+            source_batch = sample_source_batch(args, batch[-1], src_train_data, source_label_dict, source_pointer)
             # source_batch = tuple(t.to(args.device) for t in source_batch)
             target_batch = tuple(t.to(args.device) for t in batch)
 
@@ -203,22 +217,25 @@ if __name__ == '__main__':
     print(args)
     root_dir = '/import/network-temp/yimengg/data/'
     logger.info("Loading training data")
-    train_data = TwitterCOMMsDataset(feather_path='./raw_data/train_completed_exist.feather',
+    src_train_data = TwitterCOMMsDataset(feather_path='./raw_data/train_completed_exist.feather',
                                      img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
                                      multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{args.base_model}_multimodal_embeds_train.pt',
                                      metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{args.base_model}_idx_to_image_path_train.json',
                                      few_shot_topic=args.few_shot_topic)  # took ~one hour to construct the dataset
-    logger.info(f"Found {train_data.__len__()} items in training data")
+    logger.info(f"Found {src_train_data.__len__()} items in training data")
 
+    topic_list = ["military", "climate", "covid"]
+    topic_list.remove(args.few_shot_topic)
     logger.info("Loading valid data")
     val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
                                    img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
                                    multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{args.base_model}_multimodal_embeds_valid.pt',
                                    metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{args.base_model}_multimodal_idx_to_image_path_valid.json',
+                                   few_shot_topic=','.join(topic_list)
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 
-    source_dataloader = data.DataLoader(train_data,
+    source_dataloader = data.DataLoader(src_train_data,
                                      shuffle=True,
                                      batch_size=args.batch_size)
     val_dataloader = data.DataLoader(val_data,
