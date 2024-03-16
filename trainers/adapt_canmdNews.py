@@ -1,5 +1,5 @@
 """
-python -m trainers.adapt_canmd --few_shot_topic military
+python -m trainers.adapt_canmdNews --few_shot_topic bbc,guardian
 """
 import numpy as np
 import random
@@ -19,7 +19,7 @@ import json
 import os
 import logging
 import torch.utils.data as data
-from dataset.twitterCOMMsDataset import TwitterCOMMsDataset
+from dataset.newsCLIPpingsDataset import get_dataloader_2
 from model.canmd import ContrastiveModel
 from torch.autograd import Variable
 
@@ -126,7 +126,7 @@ def adapt(args):
         os.makedirs(export_root)
     
     model = ContrastiveModel(args)
-    model.load_state_dict(torch.load(os.path.join(EXPERIMENT_ROOT_FOLDER, args.output_dir, 'pretrained_model.ckpt')))
+    model.load_state_dict(torch.load(os.path.join(EXPERIMENT_ROOT_FOLDER, args.output_dir, f'pretrained_model_news_{args.few_shot_topic}.ckpt')))
 
     source_pointer = [0] * 2
     source_label_dict = {0: [], 1: []}
@@ -218,28 +218,14 @@ if __name__ == '__main__':
     print(args)
     root_dir = '/import/network-temp/yimengg/data/'
     logger.info("Loading training data")
-    src_train_data = TwitterCOMMsDataset(feather_path='./raw_data/train_completed_exist.feather',
-                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
-                                     multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{args.base_model}_multimodal_embeds_train.pt',
-                                     metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{args.base_model}_idx_to_image_path_train.json',
-                                     few_shot_topic=args.few_shot_topic)  # took ~one hour to construct the dataset
-    logger.info(f"Found {src_train_data.__len__()} items in training data")
+    src_train_data, source_dataloader, src_train_len = get_dataloader_2(target_agency=args.few_shot_topic, shuffle=True, batch_size=args.batch_size, phase='train')
+    logger.info(f"Found {src_train_len} items in training data")
 
-    topic_list = ["military", "climate", "covid"]
-    topic_list.remove(args.few_shot_topic)
+    topic_list = ["bbc", "guardian", "usa_today", "washington_post"]
+    for topic in args.few_shot_topic.split(","):
+        topic_list.remove(topic)
     logger.info("Loading valid data")
-    val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
-                                   img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
-                                   multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{args.base_model}_multimodal_embeds_valid.pt',
-                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{args.base_model}_multimodal_idx_to_image_path_valid.json',
-                                   few_shot_topic=','.join(topic_list)
-                                   )
-    logger.info(f"Found {val_data.__len__()} items in valid data")
+    val_dataloader, test_len = get_dataloader_2(target_agency="bbc,guardian,usa_today", shuffle=False, batch_size=args.batch_size, phase='test')
+    logger.info(f"Found {test_len} items in valid data")
 
-    source_dataloader = data.DataLoader(src_train_data,
-                                     shuffle=True,
-                                     batch_size=args.batch_size)
-    val_dataloader = data.DataLoader(val_data,
-                                   shuffle=False,
-                                   batch_size=args.batch_size)
     adapt(args)

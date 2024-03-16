@@ -117,11 +117,11 @@ class ContrastiveModel(nn.Module):
         
         # neg_output = sequence_output[(labels==0).nonzero()[:, 0]]
         # pos_output = sequence_output[(labels==1).nonzero()[:, 0]]
-        src_neg_emb = src_neg_emb[(src_labels==1).nonzero()[:, 0]]
-        src_pos_emb = src_pos_emb[(src_labels==1).nonzero()[:, 0]]
+        src_neg_emb = src_emb[(src_labels==1).nonzero()[:, 0]]
+        src_pos_emb = src_emb[(src_labels==1).nonzero()[:, 0]]
 
-        tgt_neg_emb = tgt_neg_emb[(tgt_labels==1).nonzero()[:, 0]]
-        tgt_pos_emb = tgt_pos_emb[(tgt_labels==1).nonzero()[:, 0]]
+        tgt_neg_emb = tgt_emb[(tgt_labels==1).nonzero()[:, 0]]
+        tgt_pos_emb = tgt_emb[(tgt_labels==1).nonzero()[:, 0]]
 
         pos_emb = inputs_embeds[(labels==0).nonzero()[:, 0]]
         neg_emb = inputs_embeds[(labels==1).nonzero()[:, 0]]
@@ -134,3 +134,5 @@ class ContrastiveModel(nn.Module):
             loss -= alpha * self.mmd(pos_emb, neg_emb)
         
         data = {"loss": loss, "logits": logits}
+
+        return data

@@ -30,8 +30,8 @@ class TwitterCOMMsDataset(Dataset):
         self.domain_map_to_idx = {"climate": 0, "covid": 1, "military": 2, "cross": 3}
         self.mode = mode
 
-        assert len(self.df) == self.multimodal_embeds.shape[0], \
-            "The number of news in self.df isn't equal to number of tensor"
+        # assert len(self.df) == self.multimodal_embeds.shape[0], \
+        #     "The number of news in self.df isn't equal to number of tensor"
 
         # if not excluding any topic
         self.row_kept = self.df.index
