@@ -12,3 +12,4 @@ lightning_logs
 saved_model
 logs
 canmd_output
+real_fnd_output
