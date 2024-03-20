@@ -38,11 +38,11 @@ class DomainClassifier(nn.Module):
             normal_init(self._modules[m], mean, std)
     
 
-class Agent(nn.Module):
-    def __init__(self, action_num):
-        super(Agent, self).__init__()
+class Policy(nn.Module):
+    def __init__(self, action_space):
+        super(Policy, self).__init__()
         self.affine1 = nn.Linear(768, 768)
-        self.affine2 = nn.Linear(768, action_num)
+        self.affine2 = nn.Linear(768, action_space)
 
         self.saved_log_probs = []
         self.rewards = []
@@ -51,7 +51,7 @@ class Agent(nn.Module):
         x = self.affine1(x)
         x = F.relu(x)
         action_scores = self.affine2(x)
-        return F.softmax(action_scores, dim=1)
+        return F.softmax(action_scores, dim=0)
     
     def weight_init(self, mean, std):
         for m in self._modules:
