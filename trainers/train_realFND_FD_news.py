@@ -2,7 +2,7 @@
 # coding: utf-8
 
 """
-python -m trainers.train_realFND_FD --batch_size 256 --event_num 4 --max_epochs 5 --hidden_dim 768 --base_model blip-2 --threshold 0.5 --few_shot_topic military
+python -m trainers.train_realFND_FD_news --batch_size 256 --event_num 4 --max_epochs 5 --hidden_dim 768 --base_model blip-2 --threshold 0.5 --few_shot_topic military
 """
 
 import argparse
@@ -19,9 +19,6 @@ from torch import optim
 from torch.autograd import Variable
 from tqdm.auto import tqdm
 
-from utils.helper import save_tensor, load_tensor, load_json
-from dataset.twitterCOMMsDataset import TwitterCOMMsDataset
-
 from sklearn.metrics import f1_score
 import numpy as np
 
@@ -29,6 +26,7 @@ import logging
 import argparse
 from model.realFND import FakeNewsClassifier, DomainClassifier
 from configs.configRealFND import ConfigRealFND
+from dataset.newsCLIPpingsDataset import get_dataloader_2
 
 # Logger
 logger = logging.getLogger()
@@ -48,7 +46,7 @@ def train(name, net, train_iterator, val_iterator, device):
     criterion = nn.CrossEntropyLoss()
     criterion.to(device)
 
-    for epoch in range(EPOCHS):
+    for epoch in range(cfg.args.max_epochs):
         net.train()
         total_loss = 0
         num_correct = 0
@@ -84,7 +82,7 @@ def train(name, net, train_iterator, val_iterator, device):
             # Implementation (2) If the predicted score (col=1) is higher than the threshold
             top_pred = torch.zeros_like(labels)
             y_preds = softmax(y_preds)
-            top_pred[y_preds[:, 1] >= threshold] = 1
+            top_pred[y_preds[:, 1] >= cfg.args.threshold] = 1
             y = labels.cpu()
             batch_size = y.shape[0]
             top_pred = top_pred.cpu().view(batch_size)
@@ -94,14 +92,14 @@ def train(name, net, train_iterator, val_iterator, device):
 
             if i % 1000 == 0:
                 logger.info("Epoch [%d/%d] %d-th batch: training accuracy: %.3f, loss: %.3f" % (
-                    epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
+                    epoch + 1, cfg.args.max_epochs, i, num_correct / num_total, total_loss / num_total))
 
         logger.info("Epoch [%d/%d]: training accuracy: %.3f, loss: %.3f" % (
-            epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
+            epoch + 1, cfg.args.max_epochs, num_correct / num_total, total_loss / num_total))
 
         test_pred, test_true = test(name, net, val_iterator, criterion, device)
-        assert test_pred.shape[0] == len(val_data), "test_pred.shape[0] is not equal to the length of val data"
-        assert test_true.shape[0] == len(val_data), "test_true.shape[0] is not equal to the length of val data"
+        assert test_pred.shape[0] == test_len, "test_pred.shape[0] is not equal to the length of val data"
+        assert test_true.shape[0] == test_len, "test_true.shape[0] is not equal to the length of val data"
 
     return net
 
@@ -117,19 +115,23 @@ def test(name, net, iterator, criterion, device):
         f1 = dict()
         num_correct["all"] = 0
         num_total["all"] = 0
-        num_correct["climate"] = 0
-        num_total["climate"] = 0
-        num_correct["covid"] = 0
-        num_total["covid"] = 0
-        num_correct["military"] = 0
-        num_total["military"] = 0
+        num_correct["bbc"] = 0
+        num_total["bbc"] = 0
+        num_correct["guardian"] = 0
+        num_total["guardian"] = 0
+        num_correct["usa_today"] = 0
+        num_total["usa_today"] = 0
+        num_correct["washington_post"] = 0
+        num_total["washington_post"] = 0
 
         y_pred_list = []
         y_true_list = []
-        f1["climate"] = 0
-        f1["covid"] = 0
-        f1["military"] = 0
+        f1["bbc"] = 0
+        f1["guardian"] = 0
+        f1["usa_today"] = 0
+        f1["washington_post"] = 0
         topic_label_list = []
+        topic_list = ["bbc", "guardian", "usa_today", "washington_post"]
         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
             inputs = batch["multimodal_emb"].to(device)
             if name == "f":
@@ -163,9 +165,8 @@ def test(name, net, iterator, criterion, device):
             num_total["all"] += cur_batch_size
 
             # Compute topic-wise performance
-            topic_labels = batch["topic"]
+            topic_labels = batch["news_source"]
             topic_label_list += topic_labels
-            topic_list = ["climate", "covid", "military"]
 
             for topic in topic_list:
                 inds = []
@@ -184,11 +185,12 @@ def test(name, net, iterator, criterion, device):
             inds = [idx for idx, topic_fullname in enumerate(topic_label_list) if topic in topic_fullname]
             f1[topic] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
 
-        logger.info("Overall testing accuracy %.4f, climate testing accuracy %.4f, covid testing accuracy %.4f, "
-                    "military testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
-                                                                    num_correct["climate"] / num_total["climate"],
-                                                                    num_correct["covid"] / num_total["covid"],
-                                                                    num_correct["military"] / num_total["military"],
+        logger.info("Overall testing accuracy %.4f, bbc testing accuracy %.4f, guardian testing accuracy %.4f, "
+                    "usa_today testing accuracy %.4f, washington_post testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
+                                                                    num_correct["bbc"] / num_total["bbc"],
+                                                                    num_correct["guardian"] / num_total["guardian"],
+                                                                    num_correct["usa_today"] / num_total["usa_today"],
+                                                                    num_correct["washington_post"] / num_total["washington_post"],
                                                                     total_loss / num_total["all"]))
         print(f"f1: {f1}")
 
@@ -198,12 +200,6 @@ def test(name, net, iterator, criterion, device):
 if __name__ == '__main__':
 
     cfg = ConfigRealFND()
-    BATCH_SIZE = cfg.args.batch_size
-    EPOCHS = cfg.args.max_epochs
-    threshold = cfg.args.threshold
-    few_shot_topic = cfg.args.few_shot_topic
-
-
     # Set up device to use
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     logger.info(device)
@@ -211,30 +207,12 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading training data")
-    train_data = TwitterCOMMsDataset(feather_path='./raw_data/train_completed_exist.feather',
-                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
-                                     multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_train.pt',
-                                     metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_idx_to_image_path_train.json',
-                                     few_shot_topic=few_shot_topic)  # took ~one hour to construct the dataset
-    logger.info(f"Found {train_data.__len__()} items in training data")
+    train_dataloader, train_len = get_dataloader_2(target_agency=cfg.args.few_shot_topic, shuffle=True, batch_size=cfg.args.batch_size, phase='train')
+    logger.info(f"Found {train_len} items in training data")
 
     logger.info("Loading valid data")
-    val_data = TwitterCOMMsDataset(feather_path='./raw_data/val_completed_exist.feather',
-                                   img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
-                                   multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
-                                   metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{cfg.args.base_model}_multimodal_idx_to_image_path_valid.json',
-                                   )
-    logger.info(f"Found {val_data.__len__()} items in valid data")
-
-    # train_iterator = data.DataLoader(train_data,
-    #                                  shuffle=True,
-    #                                  batch_size=BATCH_SIZE)
-    val_iterator = data.DataLoader(val_data,
-                                   shuffle=False,
-                                   batch_size=BATCH_SIZE)
-    train_iterator = data.DataLoader(train_data,
-                                     shuffle=True,
-                                     batch_size=BATCH_SIZE)
+    val_dataloader, test_len = get_dataloader_2(target_agency=cfg.args.few_shot_topic, shuffle=False, batch_size=cfg.args.batch_size, phase='test')
+    logger.info(f"Found {test_len} items in valid data")
 
     logger.info("Start training the model")
 
@@ -248,7 +226,7 @@ if __name__ == '__main__':
     domain_classifier.train()
     domain_classifier.weight_init(mean=0, std=0.02)
 
-    fake_news_classifier = train("f", fake_news_classifier, train_iterator, val_iterator, device)
-    torch.save(fake_news_classifier.state_dict(), os.path.join('real_fnd_output', f'fake_news_classifier_{few_shot_topic}.ckpt'))
-    # domain_classifier = train("d", domain_classifier, train_iterator, val_iterator, device)
-    # torch.save(domain_classifier.state_dict(), os.path.join('real_fnd_output', 'domain_classifier.ckpt'))
+    fake_news_classifier = train("f", fake_news_classifier, train_dataloader, val_dataloader, device)
+    torch.save(fake_news_classifier.state_dict(), os.path.join('real_fnd_output', f'fake_news_classifier_{cfg.args.few_shot_topic}.ckpt'))
+    domain_classifier = train("d", domain_classifier, val_dataloader, val_dataloader, device)
+    torch.save(domain_classifier.state_dict(), os.path.join('real_fnd_output', f'domain_classifier_{cfg.args.few_shot_topic}.ckpt'))

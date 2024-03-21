@@ -10,9 +10,11 @@ import torch.utils.data as data
 import random
 import argparse
 from tqdm import tqdm
+from dataset.newsCLIPpingsDataset import get_dataloader_2
 
 """
-python -m trainers.train_agent --few_shot_topic military --base_model blip-2
+python -m trainers.train_agentNews --few_shot_topic bbc,guardian --base_model blip-2
+python -m trainers.train_agentNews --few_shot_topic usa_today,washington_post --base_model blip-2
 """
 
 
@@ -95,16 +97,12 @@ if __name__ == "__main__":
     F = FakeNewsClassifier()
     D = DomainClassifier(event_num=4)
     F.load_state_dict(torch.load(os.path.join('./', 'real_fnd_output', f'fake_news_classifier_{args.few_shot_topic}.ckpt')))
-    D.load_state_dict(torch.load(os.path.join('./', 'real_fnd_output', 'domain_classifier.ckpt')))
+    D.load_state_dict(torch.load(os.path.join('./', 'real_fnd_output', f'domain_classifier_{args.few_shot_topic}.ckpt')))
     Pi = Policy(768 * 2)
 
     root_dir = '/import/network-temp/yimengg/data/'
 
-    train_data = TwitterCOMMsDataset(feather_path='./raw_data/train_completed_exist.feather',
-                                     img_dir=root_dir+'twitter-comms/train/images/train_image_ids',
-                                     multimodal_embeds_path=root_dir+f'twitter-comms/processed_data/tensor/{args.base_model}_multimodal_embeds_train.pt',
-                                     metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{args.base_model}_idx_to_image_path_train.json',
-                                     few_shot_topic=args.few_shot_topic)  # took ~one hour to construct the dataset
+    train_data, train_dataloader, train_len = get_dataloader_2(target_agency=args.few_shot_topic, shuffle=True, batch_size=256, phase='train')
 
 
     reinforce = REINFORCE(Pi, F, D)
