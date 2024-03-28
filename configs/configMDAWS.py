@@ -26,7 +26,8 @@ def parse():
     # p.add_argument("--max_epochs", type=int, required=True, help="number of training epochs")
     # p.add_argument("--hidden_dim", type=int, required=True, help="hidden_dim")
     # p.add_argument("--base_model", type=str, required=True)
-    p.add_argument("--few_shot_topic", type=str, required=True)
+    # p.add_argument("--few_shot_topic", type=str, required=True)   # for twitter-comms
+    p.add_argument("--target_agency", type=str, required=True)   # for newsclippings
     p.add_argument("--threshold", type=float, required=False, default=0.5,
                    help="threshold value for making the class prediction")
 
