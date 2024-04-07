@@ -79,10 +79,13 @@ class TwitterCOMMsDatasetConDATriplet(Dataset):
         positive_multimodal_emb = self.positive_multimodal_embeds[row_number]
         negative_multimodal_emb = self.negative_multimodal_embeds[row_number]
 
+        topic = item['topic']
+
         return {"original_multimodal_emb": original_multimodal_emb,
                 "positive_multimodal_emb": positive_multimodal_emb,
                 "negative_multimodal_emb": negative_multimodal_emb,
-                "original_label": original_label}
+                "original_label": original_label,
+                "topic": topic}
 
 
 def get_dataloader(cfg, few_shot_topic, shuffle, phase='val'):

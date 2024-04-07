@@ -429,7 +429,8 @@ def run(cfg, device):
                 without_progress = 0
                 best_validation_accuracy = combined_metrics["validation/accuracy"]
 
-                model_to_save = mllm_cls_head
+                # model_to_save = mllm_cls_head
+                model_to_save = model
                 torch.save(dict(
                     epoch=epoch,
                     model_state_dict=model_to_save.state_dict(),
