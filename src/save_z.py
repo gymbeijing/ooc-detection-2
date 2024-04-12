@@ -112,15 +112,15 @@ if __name__ == "__main__":
     # (3) the entire contrastive learning framework
     model = ContrastiveLearningAndTripletLossZModule(model=mllm_cls_head, mlp=mlp, loss_type="simclr", logger=None, device=device,
                                         lambda_w=0.5)
-    model.load_state_dict(torch.load('./saved_model/ConDA_M.pt')["model_state_dict"])
+    model.load_state_dict(torch.load('./saved_model/ConDA_Cl.pt')["model_state_dict"])
     
     emb_tensor, z_tensor, topic_list = validate(model, device, val_iterator)
-    print(emb_tensor.shape)
-    torch.save(emb_tensor, './output/emb.pt')
+    # print(emb_tensor.shape)
+    # torch.save(emb_tensor, './output/emb.pt')
     print(z_tensor.shape)
-    torch.save(z_tensor, './output/z.pt')
+    torch.save(z_tensor, './output/z_Cl.pt')
     print(len(topic_list))
     
-    import json
-    with open('./output/topic.json', 'w') as f:
-        json.dump(topic_list, f)
+    # import json
+    # with open('./output/topic.json', 'w') as f:
+    #     json.dump(topic_list, f)

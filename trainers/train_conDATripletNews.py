@@ -414,7 +414,7 @@ def run(cfg, device):
     tgt_excluded_topic = ['bbc', 'guardian', 'usa_today', 'washington_post']
     for topic in src_excluded_topic:
         tgt_excluded_topic.remove(topic)   # e.g. ['guardian', 'usa_today', 'washington_post']
-    # tgt_excluded_topic.append('guardian')
+    tgt_excluded_topic.append('guardian')
     print(f"src_excluded_topic: {src_excluded_topic}")
     print(f"tgt_excluded_topic: {tgt_excluded_topic}")
     # loading data
@@ -472,6 +472,7 @@ def run(cfg, device):
                 best_validation_accuracy = combined_metrics["validation/accuracy"]
 
                 model_to_save = mllm_cls_head
+                model_to_save = model
                 torch.save(dict(
                     epoch=epoch,
                     model_state_dict=model_to_save.state_dict(),
