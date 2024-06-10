@@ -1,5 +1,8 @@
 # activate venv_llava
 '''
+Reference: https://github.com/haotian-liu/LLaVA/blob/main/llava/eval/run_llava.py
+'''
+'''
 python src/eval_llava.py --model-path ../LLaVA/llava-v1.5-7b --sep , --temperature 0 --num_beams 1 --max_new_tokens 512
 '''
 import sys
@@ -24,8 +27,6 @@ from llava.mm_utils import (
     get_model_name_from_path,
     KeywordsStoppingCriteria,
 )
-
-from PIL import Image
 
 import requests
 from PIL import Image
@@ -76,49 +77,47 @@ def load_queries_and_image_paths(df):
         # Answered with No/Yes
         # text = "Answer with yes or no. Does the image match the following text? "
 
-        # Prompt 1.2
-        text = "Does the following text description and the attached image come from the same news post?"
-        "Please respond with 'yes' if there is a semantic match and 'no' if there are semantic inconsistencies."
-        "Text description: "
+        # Prompt 1.2   acc: 9/10  65/100
+        # text = "Does the following text description and the attached image come from the same news post? Please respond with 'yes' if there is a semantic match and 'no' if there are semantic inconsistencies. Text description: "
 
-        # Prompt 2
-        # Answered with text chunk
-        # text = "Task: News Image-Text Matching Analysis."
-        # "Objective: To assess whether the attached image and the provided text description correspond with each other accurately,"
-        # "Instructions:"
-        # "1. Examine the attached image carefully."
-        # "2. Read the text description provided below the image."
-        # "3. Determine the degress of alignment between the image content and the text. Consider factors such as the main subjects, background elements, and overall context."
-        # "4. Provide your response in a clear 'yes' or 'no' format."
-        # "Prompt: Does the following text description accurately represent the content and context of the attached image? Please respond with 'yes' if there is a match and 'no' if there are discrepancies."
-        # " Does the image match the following text? "
+        # Prompt 2   acc: 8/10   67/100
+        # Answered with text chunk   # used to input the wrong string
+        text = """Task: News Image-Text Matching Analysis. 
+        Objective: To assess whether the attached image and the provided text description correspond with each other accurately, 
+        Instructions: 
+        1. Examine the attached image carefully.
+        2. Read the text description provided below the image.
+        3. Determine the degress of alignment between the image content and the text. Consider factors such as the main subjects, background elements, and overall context.
+        4. Provide your response in a clear 'yes' or 'no' format.
+        Prompt: Does the following text description accurately represent the content and context of the attached image? Please respond with 'yes' if there is a match and 'no' if there are discrepancies.
+        Does the image match the following text? """
 
         # Prompt 3
-        # text = "Below is an instruction that describes the task. Write a response that appropriately completes the request. "
-        # "[Instructions]:"
-        # "1. Examine the query image (the third attached image) carefully"
-        # "2. Read the caption provided carefully"
-        # "3. Determine whether the image and the caption are semantically matched. Consider factors such as the main objects, background elements and overall context."
-        # "4. Provide your response in a clear ‘yes’ or ‘no’ format."
-        # "5. Look at two examples provided with label in the below and get an understanding of the task."
-        # "[Example 1]: Take the first attached image and the following caption as the first example with ground true label. [Caption]: Speaker Pelosi and Senate Maj Leader Schumer talking about climate change action now on @cspan"
-        # "@cspanwj https://t.co/9vw0qxdk7a [Label]: Yes"
-        # "[Example 2]: Take the second attached image and the following caption as the second example with ground true label. [Caption]: Russia and China continue to unabashedly copy military vehicle designs. These pictures are *not* of a Black Hawk, CB90 or A400M..."
-        # "(Z-20, Project 03160 and suspected Y-30) https://t.co/vRZtzwxHgn [Label]: No"
-        # "[Prompt]: Does the following caption accurately represent the content and the context of the query image (the third attached image)? Please respond with ‘yes’ if there is a match and ‘no’ if there are discrepancies identified."
-        # "[Caption]: "
+        # text = """Below is an instruction that describes the task. Write a response that appropriately completes the request.
+        # [Instructions]:
+        # 1. Examine the query image (the third attached image) carefully
+        # 2. Read the caption provided carefully
+        # 3. Determine whether the image and the caption are semantically matched. Consider factors such as the main objects, background elements and overall context.
+        # 4. Provide your response in a clear ‘yes’ or ‘no’ format.
+        # 5. Look at two examples provided with label in the below and get an understanding of the task.
+        # [Example 1]: Take the first attached image and the following caption as the first example with ground true label. [Caption]: Speaker Pelosi and Senate Maj Leader Schumer talking about climate change action now on @cspan
+        # @cspanwj https://t.co/9vw0qxdk7a [Label]: Yes
+        # [Example 2]: Take the second attached image and the following caption as the second example with ground true label. [Caption]: Russia and China continue to unabashedly copy military vehicle designs. These pictures are *not* of a Black Hawk, CB90 or A400M...
+        # (Z-20, Project 03160 and suspected Y-30) https://t.co/vRZtzwxHgn [Label]: No
+        # [Prompt]: Does the following caption accurately represent the content and the context of the query image (the third attached image)? Please respond with ‘yes’ if there is a match and ‘no’ if there are discrepancies identified.
+        # "[Caption]: """
 
-        # Prompt 4
-        # Answered with text chunk
-        # text = "Below is an instruction that describes the task. Please write a response that appropriately completes the request."
-        # "Task: Out-of-context Image Detection"
-        # "Objective: To learn to categorize image-text posts as pristine or falsified (out-of-context) by means of detecting semantic inconsistencies between images and text."
-        # "Instructions:"
-        # "1. Examine the attached image carefully."
-        # "2. Read the text description provided carefully."
-        # "3. Determine whether the image and the text are originally paired in the news post. Consider factors such as the main objects, background elements and overall context."
-        # "4. Provide your response in a clear 'yes' or 'no' format."
-        # "Prompt: Does the following text description and the attached image come from the same news post? Please respond with 'yes' if there is a semantic match and 'no' if there are semantic inconsistencies."
+        # Prompt 4   acc: 6/10   62/100
+        # Answered with text chunk   # used to input the wrong string
+        text = """Below is an instruction that describes the task. Please write a response that appropriately completes the request.
+        Task: Out-of-context Image Detection
+        Objective: To learn to categorize image-text posts as pristine or falsified (out-of-context) by means of detecting semantic inconsistencies between images and text.
+        Instructions:
+        1. Examine the attached image carefully.
+        2. Read the text description provided carefully.
+        3. Determine whether the image and the text are originally paired in the news post. Consider factors such as the main objects, background elements and overall context.
+        4. Provide your response in a clear 'yes' or 'no' format.
+        Prompt: Does the following text description and the attached image come from the same news post? Please respond with 'yes' if there is a semantic match and 'no' if there are semantic inconsistencies."""
 
         text += item['full_text']  # original caption
         img_filename = item['filename']
@@ -145,6 +144,8 @@ def eval_model(args):
     preds = []
 
     for qs, image_files in tqdm(zip(queries, image_paths), desc='iterations'):
+        # print(f"qs: {qs}")
+        # print(f"image_paths: {image_files}")
         image_token_se = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
         if IMAGE_PLACEHOLDER in qs:
             if model.config.mm_use_im_start_end:
@@ -213,6 +214,8 @@ def eval_model(args):
             )
 
         input_token_len = input_ids.shape[1]
+        # print(f"input token length: {input_token_len}")
+        # print(f"output token length: {output_ids.shape[1]}")   # input_token_len + 2
         n_diff_input_output = (input_ids != output_ids[:, :input_token_len]).sum().item()
         if n_diff_input_output > 0:
             print(
@@ -221,6 +224,7 @@ def eval_model(args):
         outputs = tokenizer.batch_decode(
             output_ids[:, input_token_len:], skip_special_tokens=True
         )[0]
+        # print(f"outputs: {outputs}")
         outputs = outputs.strip()
         if outputs.endswith(stop_str):
             outputs = outputs[: -len(stop_str)]
@@ -232,8 +236,8 @@ def eval_model(args):
     num_correct = sum(x == y for x, y in zip(preds, labels))
     num_total = len(labels)
     print(float(num_correct / num_total))
-    val_df.insert(len(val_df.columns), "llava_prompt_1.2", preds)
-    val_df.to_feather("./raw_data/val_completed_exist_with_llava_outputs.feather")
+    # val_df.insert(len(val_df.columns), "llava_prompt_1.2", preds)
+    # val_df.to_feather("./raw_data/val_completed_exist_with_llava_outputs.feather")
 
 
 if __name__ == "__main__":
