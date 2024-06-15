@@ -111,6 +111,6 @@ def get_dataloader(cfg, target_domain, shuffle, phase='test'):   # to be put int
 
         test_dataset = data.ConcatDataset(split_datasets)
         test_loader = data.DataLoader(test_dataset,
-                                       shuffle=shuffle,
-                                       batch_size=cfg.args.batch_size)
+                                      shuffle=shuffle,
+                                      batch_size=cfg.args.batch_size)
         return test_loader, test_dataset.__len__()

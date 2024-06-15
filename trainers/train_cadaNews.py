@@ -2,7 +2,7 @@
 # coding: utf-8
 
 """
-python -m trainers.train_eannNews --batch_size 256 --event_num 2 --max_epochs 10 --hidden_dim 768 --base_model blip-2 --threshold 0.5 --target_agency bbc,guardian
+python -m trainers.train_cadaNews --batch_size 256 --event_num 2 --max_epochs 10 --hidden_dim 768 --base_model blip-2 --threshold 0.5 --target_agency bbc,guardian
 """
 
 import argparse
@@ -112,8 +112,10 @@ def train(train_iterator, val_iterator, device):
 
             # Get the output predictions
             net.zero_grad()
-            y_preds, domain_preds = net(inputs)
-            loss = criterion(y_preds, labels) + criterion(domain_preds, domain_labels)
+            y_preds, rumor_domain_preds, non_domain_preds = net(inputs, labels)
+            # print(rumor_domain_preds.shape)
+            # print(domain_labels[labels==True])
+            loss = criterion(y_preds, labels) + criterion(rumor_domain_preds, domain_labels[labels==True]) + criterion(non_domain_preds, domain_labels[labels==False])
 
             # Back-propagate and update the parameters
             loss.backward()
@@ -225,8 +227,8 @@ def test(net, iterator, criterion, device):
             inputs, labels, domain_labels = Variable(inputs), Variable(labels), Variable(domain_labels)
 
             # Get the output predictions
-            y_preds, domain_preds = net(inputs)
-            loss = criterion(y_preds, labels) + criterion(domain_preds, domain_labels)
+            y_preds, rumor_domain_preds, non_domain_preds = net(inputs, labels)
+            loss = criterion(y_preds, labels) + criterion(rumor_domain_preds, domain_labels[labels==True]) + criterion(non_domain_preds, domain_labels[labels==False])
 
             # Compute total loss of the current epoch
             total_loss += loss.item()
@@ -306,7 +308,7 @@ if __name__ == '__main__':
 
     logger.info("Start training the model")
 
-    net = EANN(cfg.args)   # blip-2 multimodal: 768, blip-2 unimodal: 512
+    net = CADA(cfg.args)   # blip-2 multimodal: 768, blip-2 unimodal: 512
     net.cuda()
     net.train()
     net.weight_init(mean=0, std=0.02)
