@@ -278,6 +278,34 @@ def test_time_adaptation(model, test_loader):
         _ = model.model(z)
 
 
+def test_time_adaptation_train(model, test_loader):
+    model.eval()   # Set other modules to eval mode
+    classifier = model.model
+    classifier.train()  # Set the classifier to train mode for adaptation
+    learning_rate = 2e-5
+    weight_decay = 0
+    optimizer = Adam(classifier.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    for data in test_loader:
+        emb, labels = data["original_multimodal_emb"], data["original_label"]
+        emb, labels = emb.to(device), labels.to(device)
+
+        # For ContrastiveLearningAndTripletLossModule, use:
+        # outputs = model(emb) # Updating EMA of E[x] and Var[x]
+
+        # For ContrastiveLearningAndTripletLossZModule, use:
+        z = model.mlp(emb)
+
+        optimizer.zero_grad()
+        logits = classifier(z)
+        loss = classifier.compute_loss(logits, labels)
+
+        # (4) Back-propagation: compute the gradients
+        loss.backward()
+
+        # (5) Update the model parameters
+        optimizer.step()
+
+
 def _all_reduce_dict(d, device):
     # wrap in tensor and use reduce to gpu0 tensor
     output_d = {}
@@ -406,7 +434,9 @@ def run(cfg, device):
         #                               src_validation_loader)  ## we are only using supervision on the source. Wrong using src_validation_loader!!!
         ## Test-time Adaptation ###
         # test_time_adaptation(mllm_cls_head, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossModule
-        test_time_adaptation(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
+        # test_time_adaptation(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
+        test_time_adaptation_train(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
+
         ###########################
         # validation_metrics = validate(mllm_cls_head, device,
         #                               tgt_validation_loader)  ## we are only using supervision on the source, compatible with ContrastiveLearningAndTripletLossModule

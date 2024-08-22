@@ -254,7 +254,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_new_tokens", type=int, default=512)
     args = parser.parse_args()
 
-    val_feather_path = './raw_data/val_completed_exist_with_llava_outputs.feather'
+    # val_feather_path = './raw_data/val_completed_exist_with_llava_outputs.feather'
+    val_feather_path = './raw_data/val_completed_exist.feather'
     val_df = pd.read_feather(val_feather_path)  # already drop the non-exists
     val_img_dir = '/import/network-temp/yimengg/data/twitter-comms/images/val_images/val_tweet_image_ids'
 

@@ -47,7 +47,7 @@ class NewsCLIPpingsDatasetConDATriplet(Dataset):
         self.row_kept = set(range(self.original_multimodal_embeds.shape[0]))
 
         # Exclude target domain
-        if self.phase == 'train':   # added test for tsne viz
+        if self.phase == 'train' or self.phase == 'test':   # added test for tsne viz
         # print(f"phase: {self.phase}, excluded domain: {self.target_domain}")
             row_excluded = [i for i, x in enumerate(self.domain_labels) if x in self.target_domain]
             self.row_kept = self.row_kept.difference(row_excluded)

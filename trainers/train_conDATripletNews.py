@@ -281,9 +281,13 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             domain_labels_list += list(domain_labels)
 
 
+            # loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
+            #                  bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size),
+            #                  usa_today_acc="{:.4f}".format(usa_today_validation_accuracy / usa_today_epoch_size), washington_post_acc="{:.4f}".format(washington_post_validation_accuracy / washington_post_epoch_size))
+            # loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
+            #                  bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size))
             loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
-                             bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size),
-                             usa_today_acc="{:.4f}".format(usa_today_validation_accuracy / usa_today_epoch_size), washington_post_acc="{:.4f}".format(washington_post_validation_accuracy / washington_post_epoch_size))
+                             washington_post_acc="{:.4f}".format(washington_post_validation_accuracy / washington_post_epoch_size))
         
         outputs = np.concatenate(outputs)
         targets = np.concatenate(targets)
@@ -291,6 +295,7 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
         print(f"overall f1: {validation_f1}")
         domain_list = ['bbc', 'guardian', 'usa_today', 'washington_post']
         for domain in domain_list:
+        # for domain in cfg.args.target_domain.split(','):
             inds = [idx for idx, domain_name in enumerate(domain_labels_list) if domain_name == domain]
             f1[domain] = f1_score(targets[inds], outputs[inds], average='macro')
         print(f1)
@@ -314,6 +319,37 @@ def test_time_adaptation(model, test_loader):
         # For ContrastiveLearningAndTripletLossZModule, use:
         z = model.mlp(emb)
         _ = model.model(z)
+
+    
+def test_time_adaptation_train(model, test_loader):
+    model.eval()   # Set other modules to eval mode
+    classifier = model.model
+    classifier.train()  # Set the classifier to train mode for adaptation
+    learning_rate = 2e-5
+    weight_decay = 0
+    optimizer = Adam(classifier.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    for batch_idx, data in enumerate(test_loader):
+        emb, labels = data["original_multimodal_emb"], data["original_label"]
+        emb, labels = emb.to(device), labels.to(device)
+
+        # For ContrastiveLearningAndTripletLossModule, use:
+        # outputs = model(emb) # Updating EMA of E[x] and Var[x]
+
+        # For ContrastiveLearningAndTripletLossZModule, use:
+        z = model.mlp(emb)
+
+        optimizer.zero_grad()
+        logits = classifier(z)
+        loss = classifier.compute_loss(logits, labels)
+
+        # (4) Back-propagation: compute the gradients
+        loss.backward()
+
+        # (5) Update the model parameters
+        optimizer.step()
+
+        # if batch_idx > 100:
+        #     break
 
 
 def _all_reduce_dict(d, device):
@@ -414,7 +450,7 @@ def run(cfg, device):
     tgt_excluded_topic = ['bbc', 'guardian', 'usa_today', 'washington_post']
     for topic in src_excluded_topic:
         tgt_excluded_topic.remove(topic)   # e.g. ['guardian', 'usa_today', 'washington_post']
-    tgt_excluded_topic.append('guardian')
+    tgt_excluded_topic.append('usa_today')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
     print(f"src_excluded_topic: {src_excluded_topic}")
     print(f"tgt_excluded_topic: {tgt_excluded_topic}")
     # loading data
@@ -448,7 +484,8 @@ def run(cfg, device):
         #                               src_validation_loader)  ## we are only using supervision on the source. Wrong using src_validation_loader!!!
         ## Test-time Adaptation ###
         # test_time_adaptation(mllm_cls_head, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossModule
-        test_time_adaptation(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
+        # test_time_adaptation(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
+        test_time_adaptation_train(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
         ###########################
         # validation_metrics = validate(mllm_cls_head, device,
         #                               tgt_validation_loader)  ## we are only using supervision on the source, compatible with ContrastiveLearningAndTripletLossModule
