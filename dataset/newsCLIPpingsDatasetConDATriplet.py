@@ -84,11 +84,35 @@ def get_dataset(root_dir, data_dir, img_dir, split, phase, target_domain):
     return dataset
 
 
+def get_dataset_pseudo(root_dir, data_dir, img_dir, split, phase, target_domain):
+    # print(f"      split: {split}")
+    original_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_test_original.pt'
+    positive_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_test_original.pt'
+    negative_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_test_GaussianBlur.pt'   # placeholder
+    label_path = f'{root_dir}/label/llava_label_{split}_test.pt'   # original and positive share the labels
+    news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_test_GaussianBlur.json'
+    target_domain = target_domain
+    dataset = NewsCLIPpingsDatasetConDATriplet(img_dir, original_multimodal_embeds_path, positive_multimodal_embeds_path, negative_multimodal_embeds_path, label_path, news_source_path, target_domain, phase)
+    return dataset
+
+
 def get_dataloader(cfg, target_domain, shuffle, phase='test'):   # to be put into cfg
     root_dir = '/import/network-temp/yimengg/NewsCLIPpings/processed_data'
     data_dir = '/import/network-temp/yimengg/NewsCLIPpings/news_clippings/data/'
     img_dir = '/import/network-temp/yimengg/NewsCLIPpings/visual_news/origin'
-    if phase == 'train':
+    if phase == "pseudo":
+        split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']
+        split_datasets = []
+        for split in split_list:
+            dataset = get_dataset_pseudo(root_dir=root_dir, data_dir=data_dir, img_dir=img_dir, split=split, phase=phase, target_domain=target_domain)
+            split_datasets.append(dataset)
+
+        test_dataset = data.ConcatDataset(split_datasets)
+        test_loader = data.DataLoader(test_dataset,
+                                      shuffle=shuffle,
+                                      batch_size=cfg.args.batch_size)
+        return test_loader, test_dataset.__len__()
+    elif phase == 'train':
         # print(f"phase: {phase}")
         split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']
         split_datasets = []

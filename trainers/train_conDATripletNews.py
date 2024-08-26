@@ -25,6 +25,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from sklearn.metrics import f1_score, classification_report
 import numpy as np
+import torch.nn.functional as F
 
 import sys
 sys.path.insert(0,os.getcwd())   # inserts the current working directory at the beginning of the search path
@@ -323,6 +324,7 @@ def test_time_adaptation(model, test_loader):
     
 def test_time_adaptation_train(model, test_loader):
     model.eval()   # Set other modules to eval mode
+    pseudo_labels, kept_indices = get_pseudo_label(model, test_loader)
     classifier = model.model
     classifier.train()  # Set the classifier to train mode for adaptation
     learning_rate = 2e-5
@@ -330,7 +332,39 @@ def test_time_adaptation_train(model, test_loader):
     optimizer = Adam(classifier.parameters(), lr=learning_rate, weight_decay=weight_decay)
     for batch_idx, data in enumerate(test_loader):
         emb, labels = data["original_multimodal_emb"], data["original_label"]
+        labels = pseudo_labels[batch_idx]   # overwrite the ground truth label by the pseudo label
+        kept_index = kept_indices[batch_idx]
         emb, labels = emb.to(device), labels.to(device)
+        kept_index = kept_index.to(device)
+
+        # For ContrastiveLearningAndTripletLossModule, use:
+        # outputs = model(emb) # Updating EMA of E[x] and Var[x]
+
+        # For ContrastiveLearningAndTripletLossZModule, use:
+        z = model.mlp(emb)
+
+        optimizer.zero_grad()
+        logits = classifier(z)
+        loss = classifier.compute_loss(logits[kept_index], labels[kept_index])
+
+        # (4) Back-propagation: compute the gradients
+        # loss.backward()
+        loss.backward()   # for mask
+
+        # (5) Update the model parameters
+        optimizer.step()
+
+
+def test_time_adaptation_train_pseudo(model, test_pseudo_loader):
+    model.eval()   # Set other modules to eval mode
+    classifier = model.model
+    classifier.train()  # Set the classifier to train mode for adaptation
+    learning_rate = 2e-5
+    weight_decay = 0
+    optimizer = Adam(classifier.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    for batch_idx, data in enumerate(test_pseudo_loader):
+        emb, pseudo_labels = data["original_multimodal_emb"], data["original_label"]
+        emb, labels = emb.to(device), pseudo_labels.to(device)
 
         # For ContrastiveLearningAndTripletLossModule, use:
         # outputs = model(emb) # Updating EMA of E[x] and Var[x]
@@ -343,13 +377,39 @@ def test_time_adaptation_train(model, test_loader):
         loss = classifier.compute_loss(logits, labels)
 
         # (4) Back-propagation: compute the gradients
-        loss.backward()
+        # loss.backward()
+        loss.backward()   # for mask
 
         # (5) Update the model parameters
         optimizer.step()
 
         # if batch_idx > 100:
         #     break
+
+
+def get_pseudo_label(model, test_loader):
+    model.eval()
+    pseudo_labels = []
+    conf_threshold = 0.7
+    kept_indices = []
+    for batch_idx, data in enumerate(test_loader):
+        emb, labels = data["original_multimodal_emb"], data["original_label"]
+        emb, labels = emb.to(device), labels.to(device)
+
+        # For ContrastiveLearningAndTripletLossZModule, use:
+        z = model.mlp(emb)
+        logits = model.model(z)
+        logits_softmax = F.softmax(logits, dim=1)
+        max_values = logits_softmax.max(dim=1).values
+        classifications, labels = return_classification(logits, labels)
+        indices = (max_values > conf_threshold).nonzero(as_tuple=True)[0]
+        # loss_zero_mask = torch.ones_like(logits_softmax)
+        # loss_zero_mask[indices] = 0
+        # loss_zero_masks.append(loss_zero_mask)
+        kept_indices.append(indices)
+        pseudo_labels.append(classifications)
+    
+    return pseudo_labels, kept_indices
 
 
 def _all_reduce_dict(d, device):
@@ -485,7 +545,7 @@ def run(cfg, device):
         ## Test-time Adaptation ###
         # test_time_adaptation(mllm_cls_head, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossModule
         # test_time_adaptation(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
-        test_time_adaptation_train(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
+        test_time_adaptation_train(model, tgt_validation_loader)
         ###########################
         # validation_metrics = validate(mllm_cls_head, device,
         #                               tgt_validation_loader)  ## we are only using supervision on the source, compatible with ContrastiveLearningAndTripletLossModule
