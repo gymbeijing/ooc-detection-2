@@ -2,7 +2,7 @@
 # coding: utf-8
 
 """
-python -m trainers.train_EANN --batch_size 256 --event_num 4 --max_epochs 10 --hidden_dim 768 --base_model blip-2 --threshold 0.3 --few_shot_topic military
+python -m trainers.train_eann --batch_size 256 --event_num 4 --max_epochs 10 --hidden_dim 768 --base_model blip-2 --threshold 0.3 --few_shot_topic military
 """
 
 import argparse
@@ -31,6 +31,8 @@ import logging
 import argparse
 from model.eann import EANN
 from configs.configEANN import ConfigEANN
+from sklearn.metrics import f1_score, classification_report
+from utils.helper import accuracy_at_eer, compute_auc
 
 # Logger
 logger = logging.getLogger()
@@ -198,6 +200,8 @@ def test(net, iterator, criterion, device):
         total_loss = 0
         num_correct = dict()
         num_total = dict()
+        cls_report = dict()
+        auc_score = dict()
         f1 = dict()
         num_correct["all"] = 0
         num_total["all"] = 0
@@ -261,8 +265,14 @@ def test(net, iterator, criterion, device):
                     i, num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
                 
         for topic in topic_list:
+            print(topic)
             inds = [idx for idx, topic_fullname in enumerate(topic_label_list) if topic in topic_fullname]
             f1[topic] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
+            print(f"f1: {f1[topic]}")
+            cls_report[topic] = classification_report(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], digits=4, zero_division=0)
+            print(f"classification report: {cls_report[topic]}")
+            auc_score[topic] = compute_auc(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds])
+            print(f"auc score: {auc_score[topic]}")
 
         logger.info("Overall testing accuracy %.4f, climate testing accuracy %.4f, covid testing accuracy %.4f, "
                     "military testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],

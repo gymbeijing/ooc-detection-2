@@ -1,5 +1,5 @@
 """
-(venv_py38) python -m trainers.train_conDATripletNews --batch_size 256 --max_epochs 20 --target_domain bbc,guardian --base_model blip-2 --loss_type simclr
+(venv_py38) python -m trainers.train_conDATripletNews --batch_size 256 --max_epochs 1 --target_domain bbc,guardian --base_model blip-2 --loss_type simclr
 """
 import logging
 import os
@@ -26,6 +26,7 @@ from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import f1_score, classification_report
 import numpy as np
 import torch.nn.functional as F
+from utils.helper import accuracy_at_eer, compute_auc
 
 import sys
 sys.path.insert(0,os.getcwd())   # inserts the current working directory at the beginning of the search path
@@ -226,6 +227,7 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
         targets = []
         outputs = []
         domain_labels_list = []
+        output_logits = []
         for example in loop:
             losses = []
             logit_votes = []
@@ -279,6 +281,7 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             classifications, labels = return_classification(logits, labels)
             targets.append(labels)
             outputs.append(classifications)
+            output_logits.append(logits.cpu())
             domain_labels_list += list(domain_labels)
 
 
@@ -288,18 +291,29 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             # loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
             #                  bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size))
             loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
-                             washington_post_acc="{:.4f}".format(washington_post_validation_accuracy / washington_post_epoch_size))
+                             bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size))
         
         outputs = np.concatenate(outputs)
         targets = np.concatenate(targets)
-        f1 = dict()
+        output_logits = np.concatenate(output_logits)
+        # f1 = dict()
         print(f"overall f1: {validation_f1}")
+        pred_logits = output_logits[np.arange(output_logits.shape[0]), (1-targets).flatten()]
+        accuracy, eer, eer_threshold = accuracy_at_eer(targets, pred_logits)
+        print(f"Accuracy at EER: {accuracy}")
+        print(f"EER: {eer}")
+        print(f"Threshold at EER: {eer_threshold}")
+        auc_score = compute_auc(targets, outputs)
+        print(f"AUC score: {auc_score}")
         domain_list = ['bbc', 'guardian', 'usa_today', 'washington_post']
-        for domain in domain_list:
-        # for domain in cfg.args.target_domain.split(','):
-            inds = [idx for idx, domain_name in enumerate(domain_labels_list) if domain_name == domain]
-            f1[domain] = f1_score(targets[inds], outputs[inds], average='macro')
+        # for domain in domain_list:
+        # # for domain in cfg.args.target_domain.split(','):
+        #     inds = [idx for idx, domain_name in enumerate(domain_labels_list) if domain_name == domain]
+        #     f1[domain] = f1_score(targets[inds], outputs[inds], average='macro', zero_division=0)
+        f1 = f1_score(targets, outputs, average='macro', zero_division=0)
+        cls_report = classification_report(targets, outputs, digits=4, zero_division=0)
         print(f1)
+        print(cls_report)
 
     return {
         "validation/accuracy": validation_accuracy,
@@ -390,7 +404,7 @@ def test_time_adaptation_train_pseudo(model, test_pseudo_loader):
 def get_pseudo_label(model, test_loader):
     model.eval()
     pseudo_labels = []
-    conf_threshold = 0.7
+    conf_threshold = 0.77
     kept_indices = []
     for batch_idx, data in enumerate(test_loader):
         emb, labels = data["original_multimodal_emb"], data["original_label"]
@@ -510,7 +524,7 @@ def run(cfg, device):
     tgt_excluded_topic = ['bbc', 'guardian', 'usa_today', 'washington_post']
     for topic in src_excluded_topic:
         tgt_excluded_topic.remove(topic)   # e.g. ['guardian', 'usa_today', 'washington_post']
-    tgt_excluded_topic.append('usa_today')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
+    tgt_excluded_topic.append('guardian')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
     print(f"src_excluded_topic: {src_excluded_topic}")
     print(f"tgt_excluded_topic: {tgt_excluded_topic}")
     # loading data

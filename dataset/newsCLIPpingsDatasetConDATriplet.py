@@ -75,7 +75,7 @@ class NewsCLIPpingsDatasetConDATriplet(Dataset):
 def get_dataset(root_dir, data_dir, img_dir, split, phase, target_domain):
     # print(f"      split: {split}")
     original_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
-    positive_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
+    positive_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'
     negative_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'   # placeholder
     label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'   # original and positive share the labels
     news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'

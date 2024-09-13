@@ -58,6 +58,7 @@ class NewsCLIPpingsDataset(Dataset):
         # print(len(row_excluded))
         
         self.row_kept = list(self.row_kept)
+        # self.domain_map_to_idx = {"bbc": 0, "guardian": 1, "usa_today": 0, "washington_post": 1}   # for EANN
         self.domain_map_to_idx = {"bbc": 0, "guardian": 1, "usa_today": 2, "washington_post": 3}
 
 

@@ -1,5 +1,5 @@
 """
-(venv_py38) python -m trainers.train_conDATriplet --batch_size 256 --max_epochs 20 --tgt_topic military --base_model blip-2 --loss_type simclr
+(venv_py38) python -m trainers.train_conDATriplet --batch_size 256 --max_epochs 1 --tgt_topic military --base_model blip-2 --loss_type simclr
 """
 import argparse
 import logging
@@ -24,8 +24,10 @@ from dataset.twitterCOMMsDatasetConDATriplet import get_dataloader
 from configs.configConDA import ConfigConDA
 from torch.utils.tensorboard import SummaryWriter
 
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, classification_report
 import numpy as np
+import torch.nn.functional as F
+from utils.helper import accuracy_at_eer, compute_auc
 
 import sys
 sys.path.insert(0,os.getcwd())   # inserts the current working directory at the beginning of the search path
@@ -193,7 +195,8 @@ def train(model: nn.Module, optimizer, device: str, src_loader: DataLoader,
                              src_LCE_perturb=output_dic.src_ce_loss_perturb.item(),
                              src_LCE_negative=output_dic.src_ce_loss_negative.item(),   #### newly added negative cross-entropy loss ######
                              src_ltriplet=output_dic.src_triplet_loss.item(),
-                             src_lctr=output_dic.src_ctr_loss.item())
+                             src_lctr=output_dic.src_ctr_loss.item(),
+                             refresh=False)
 
     return {
         "train/src_accuracy": src_train_accuracy,
@@ -254,8 +257,12 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
         
         outputs = np.concatenate(outputs)
         targets = np.concatenate(targets)
+        auc_score = compute_auc(targets, outputs)
+        print(f"AUC score: {auc_score}")
         validation_f1 = f1_score(targets, outputs, average='macro')
         print(f"f1: {validation_f1}")
+        cls_report = classification_report(targets, outputs, digits=4, zero_division=0)
+        print(cls_report)
 
     return {
         "validation/accuracy": validation_accuracy,
@@ -280,14 +287,18 @@ def test_time_adaptation(model, test_loader):
 
 def test_time_adaptation_train(model, test_loader):
     model.eval()   # Set other modules to eval mode
+    pseudo_labels, kept_indices = get_pseudo_label(model, test_loader)
     classifier = model.model
     classifier.train()  # Set the classifier to train mode for adaptation
     learning_rate = 2e-5
     weight_decay = 0
     optimizer = Adam(classifier.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    for data in test_loader:
+    for batch_idx, data in enumerate(test_loader):
         emb, labels = data["original_multimodal_emb"], data["original_label"]
+        labels = pseudo_labels[batch_idx]   # overwrite the ground truth label by the pseudo label
+        kept_index = kept_indices[batch_idx]
         emb, labels = emb.to(device), labels.to(device)
+        kept_index = kept_index.to(device)
 
         # For ContrastiveLearningAndTripletLossModule, use:
         # outputs = model(emb) # Updating EMA of E[x] and Var[x]
@@ -297,13 +308,39 @@ def test_time_adaptation_train(model, test_loader):
 
         optimizer.zero_grad()
         logits = classifier(z)
-        loss = classifier.compute_loss(logits, labels)
+        loss = classifier.compute_loss(logits[kept_index], labels[kept_index])
 
         # (4) Back-propagation: compute the gradients
-        loss.backward()
+        # loss.backward()
+        loss.backward()   # for mask
 
         # (5) Update the model parameters
         optimizer.step()
+
+
+def get_pseudo_label(model, test_loader):
+    model.eval()
+    pseudo_labels = []
+    conf_threshold = 0.7
+    kept_indices = []
+    for batch_idx, data in enumerate(test_loader):
+        emb, labels = data["original_multimodal_emb"], data["original_label"]
+        emb, labels = emb.to(device), labels.to(device)
+
+        # For ContrastiveLearningAndTripletLossZModule, use:
+        z = model.mlp(emb)
+        logits = model.model(z)
+        logits_softmax = F.softmax(logits, dim=1)
+        max_values = logits_softmax.max(dim=1).values
+        classifications, labels = return_classification(logits, labels)
+        indices = (max_values > conf_threshold).nonzero(as_tuple=True)[0]
+        # loss_zero_mask = torch.ones_like(logits_softmax)
+        # loss_zero_mask[indices] = 0
+        # loss_zero_masks.append(loss_zero_mask)
+        kept_indices.append(indices)
+        pseudo_labels.append(classifications)
+    
+    return pseudo_labels, kept_indices
 
 
 def _all_reduce_dict(d, device):

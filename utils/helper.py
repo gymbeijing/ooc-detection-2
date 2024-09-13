@@ -5,6 +5,8 @@
 import torch
 import json
 import re
+import numpy as np
+from sklearn.metrics import roc_curve, accuracy_score, roc_auc_score
 
 
 def save_tensor(tensor, dest):
@@ -37,3 +39,34 @@ def load_json(filepath):
     with open(filepath, 'r') as fp:
         json_data = json.load(fp)
     return json_data
+
+
+def compute_eer(y_true, y_scores):
+    # Compute false positive rates, true positive rates, and thresholds
+    fpr, tpr, thresholds = roc_curve(y_true, y_scores, pos_label=1)
+    
+    # False negative rate is 1 - TPR
+    fnr = 1 - tpr
+
+    # Find the point where FPR and FNR are closest
+    eer_threshold = thresholds[np.nanargmin(np.abs(fnr - fpr))]
+    eer = fpr[np.nanargmin(np.abs(fnr - fpr))]
+
+    return eer, eer_threshold
+
+def accuracy_at_eer(y_true, y_scores):
+    # Compute EER and the corresponding threshold
+    eer, eer_threshold = compute_eer(y_true, y_scores)
+
+    # Classify data based on the EER threshold
+    y_pred = (y_scores >= eer_threshold).astype(int)
+
+    # Compute accuracy
+    accuracy = accuracy_score(y_true, y_pred)
+
+    return accuracy, eer, eer_threshold
+
+def compute_auc(y_true, y_scores):
+    auc_score = roc_auc_score(y_true, y_scores)
+
+    return auc_score
