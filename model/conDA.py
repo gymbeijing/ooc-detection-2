@@ -113,7 +113,7 @@ class SimCLRContrastiveLoss(nn.Module):
     """
     SimCLR style contrastive loss
     """
-    def __init__(self, batch_size, temperature=0.5):
+    def __init__(self, batch_size, temperature=0.5):   # Twitter-COMMs: 0.55   NewsCLIPpings: 0.5
         super().__init__()
         self.batch_size = batch_size
         self.register_buffer("temperature", torch.tensor(temperature))

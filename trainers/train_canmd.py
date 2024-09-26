@@ -18,6 +18,8 @@ from dataset.twitterCOMMsDataset import TwitterCOMMsDataset
 from model.canmd import ContrastiveModel
 from torch.autograd import Variable
 from torch.optim import AdamW
+from sklearn.metrics import f1_score, classification_report
+from utils.helper import accuracy_at_eer, compute_auc
 
 # Logger
 logger = logging.getLogger()
@@ -39,6 +41,7 @@ def evaluation(args, model, eval_dataloader):
     eval_preds = []
     eval_labels = []
     eval_losses = []
+    topic_label_list = []
     
     tqdm_dataloader = tqdm(eval_dataloader)
     for _, batch in enumerate(tqdm_dataloader):
@@ -46,6 +49,9 @@ def evaluation(args, model, eval_dataloader):
         inputs_embeds, labels = batch["multimodal_emb"].to(device), batch["label"].to(device)
         inputs_embeds, labels = Variable(inputs_embeds), Variable(labels)
         outputs = model(inputs_embeds, labels)
+
+        topic_labels = batch["domain_name"]
+        topic_label_list += topic_labels
 
         loss = outputs["loss"]
         logits = outputs["logits"]
@@ -65,6 +71,12 @@ def evaluation(args, model, eval_dataloader):
     final_f1 = f1_score(eval_labels, eval_preds)
     final_precision = precision_score(eval_labels, eval_preds)
     final_recall = recall_score(eval_labels, eval_preds)
+
+    inds = [idx for idx, topic_fullname in enumerate(topic_label_list) if "covid" in topic_fullname]   # manually set
+    cls_report = classification_report(np.array(eval_labels)[inds], np.array(eval_preds)[inds], digits=4, zero_division=0)
+    auc_score = compute_auc(np.array(eval_labels)[inds], np.array(eval_preds)[inds])
+    print(cls_report)
+    print(auc_score)
     
     return final_bacc, final_acc, final_f1, final_precision, final_recall
 
@@ -138,7 +150,7 @@ if __name__ == '__main__':
                                    img_dir=root_dir+'twitter-comms/images/val_images/val_tweet_image_ids',
                                    multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{args.base_model}_multimodal_embeds_valid.pt',
                                    metadata_path=root_dir+f'twitter-comms/processed_data/metadata/{args.base_model}_multimodal_idx_to_image_path_valid.json',
-                                   few_shot_topic=args.few_shot_topic
+                                #    few_shot_topic=args.few_shot_topic
                                    )
     logger.info(f"Found {val_data.__len__()} items in valid data")
 

@@ -31,6 +31,8 @@ from model.mdaws import MDAWS
 from configs.configMDAWS import ConfigMDAWS
 from itertools import chain
 from dataset.newsCLIPpingsDataset import get_dataloader_2
+from sklearn.metrics import f1_score, classification_report
+from utils.helper import accuracy_at_eer, compute_auc
 
 # Logger
 logger = logging.getLogger()
@@ -144,6 +146,8 @@ def test(net, iterator, device):
         num_correct = dict()
         num_total = dict()
         f1 = dict()
+        cls_report = dict()
+        auc_score = dict()
         num_correct["all"] = 0
         num_total["all"] = 0
         num_correct["bbc"] = 0
@@ -214,6 +218,10 @@ def test(net, iterator, device):
         #     f1[topic] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
         inds = [idx for idx, topic_fullname in enumerate(topic_label_list) if target_agency in topic_fullname]
         f1[target_agency] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
+        cls_report[target_agency] = classification_report(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], digits=4, zero_division=0)
+        auc_score[target_agency] = compute_auc(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds])
+        print(f"classification report: {cls_report[target_agency]}")
+        print(f"auc score: {auc_score[target_agency]}")
         # print(num_total)
         # print(num_correct)
 

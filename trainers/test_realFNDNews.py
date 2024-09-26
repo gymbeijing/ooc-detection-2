@@ -20,6 +20,8 @@ import argparse
 from model.realFND import FakeNewsClassifier, Policy
 from configs.configRealFND import ConfigRealFND
 from dataset.newsCLIPpingsDataset import get_dataloader_2
+from sklearn.metrics import f1_score, classification_report
+from utils.helper import accuracy_at_eer, compute_auc
 
 
 """
@@ -46,6 +48,8 @@ def test(policy, net, iterator, criterion, device):
         num_correct = dict()
         num_total = dict()
         f1 = dict()
+        cls_report = dict()
+        auc_score = dict()
         num_correct["all"] = 0
         num_total["all"] = 0
         num_correct["bbc"] = 0
@@ -64,7 +68,8 @@ def test(policy, net, iterator, criterion, device):
         f1["usa_today"] = 0
         f1["washington_post"] = 0
         topic_label_list = []
-        topic_list = ["usa_today", "washington_post"]
+        # topic_list = ["usa_today", "washington_post"]
+        topic_list = few_shot_topic.split(",")
         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
             inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
@@ -127,6 +132,11 @@ def test(policy, net, iterator, criterion, device):
         for topic in topic_list:
             inds = [idx for idx, topic_fullname in enumerate(topic_label_list) if topic in topic_fullname]
             f1[topic] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
+            print(f"f1: {f1[topic]}")
+            cls_report[topic] = classification_report(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], digits=4, zero_division=0)
+            print(f"classification report: {cls_report[topic]}")
+            auc_score[topic] = compute_auc(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds])
+            print(f"auc score: {auc_score[topic]}")
 
         logger.info("Overall testing accuracy %.4f, bbc testing accuracy %.4f, guardian testing accuracy %.4f, "
                     "usa_today testing accuracy %.4f, washington_post testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
@@ -144,7 +154,7 @@ if __name__ == '__main__':
 
     base_model = 'blip-2'
     BATCH_SIZE = 256
-    few_shot_topic = "usa_today,washington_post"
+    few_shot_topic = "bbc,guardian"
 
 
     # Set up device to use
@@ -154,7 +164,7 @@ if __name__ == '__main__':
     root_dir = '/import/network-temp/yimengg/data/'
 
     logger.info("Loading valid data")
-    val_dataloader, test_len = get_dataloader_2(target_agency="bbc,guardian", shuffle=False, batch_size=BATCH_SIZE, phase='test')
+    val_dataloader, test_len = get_dataloader_2(target_agency="usa_today,washington_post", shuffle=False, batch_size=BATCH_SIZE, phase='test')
     logger.info(f"Found {test_len} items in valid data")
 
 

@@ -31,6 +31,8 @@ import logging
 import argparse
 from model.cada import CADA
 from configs.configEANN import ConfigEANN
+from sklearn.metrics import f1_score, classification_report
+from utils.helper import accuracy_at_eer, compute_auc
 
 # Logger
 logger = logging.getLogger()
@@ -199,6 +201,8 @@ def test(net, iterator, criterion, device):
         num_correct = dict()
         num_total = dict()
         f1 = dict()
+        cls_report = dict()
+        auc_score = dict()
         num_correct["all"] = 0
         num_total["all"] = 0
         num_correct["climate"] = 0
@@ -261,8 +265,14 @@ def test(net, iterator, criterion, device):
                     i, num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
                 
         for topic in topic_list:
+            print(topic)
             inds = [idx for idx, topic_fullname in enumerate(topic_label_list) if topic in topic_fullname]
             f1[topic] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
+            print(f"f1: {f1[topic]}")
+            cls_report[topic] = classification_report(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], digits=4, zero_division=0)
+            print(f"classification report: {cls_report[topic]}")
+            auc_score[topic] = compute_auc(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds])
+            print(f"auc score: {auc_score[topic]}")
 
         logger.info("Overall testing accuracy %.4f, climate testing accuracy %.4f, covid testing accuracy %.4f, "
                     "military testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],

@@ -49,16 +49,19 @@ class NewsCLIPpingsDataset(Dataset):
         # if target_domain in topics and phase=="train":
         target_agency = target_agency.split(",")
         # if target_agency in agencies and phase=="train":
-        if phase=="train":
-        # if phase=="train" or phase=="test":   # for canmd and real_fnd (test_realFND.py) and mdaws
+        # if phase=="train":
+        if phase=="train" or phase=="test":   # for canmd and real_fnd (test_realFND.py) and mdaws
             # row_excluded = [i for i, x in enumerate(self.news_source) if x == target_agency or x == 'washington_post']
             row_excluded = [i for i, x in enumerate(self.news_source) if x in target_agency]
             # row_excluded = [i for i, x in enumerate(self.topic) if x in target_domain or x not in topics]
             self.row_kept = self.row_kept.difference(row_excluded)
         # print(len(row_excluded))
+        # if phase=="test":   # for canmd and real_fnd (test_realFND.py) and mdaws ?
+        #     row_excluded = [i for i, x in enumerate(self.news_source) if x not in ["bbc", "guardian"]]
+        #     self.row_kept = self.row_kept.difference(row_excluded)
         
         self.row_kept = list(self.row_kept)
-        # self.domain_map_to_idx = {"bbc": 0, "guardian": 1, "usa_today": 0, "washington_post": 1}   # for EANN
+        # self.domain_map_to_idx = {"bbc": 0, "guardian": 1, "usa_today": 0, "washington_post": 1}   # for EANN and CADA
         self.domain_map_to_idx = {"bbc": 0, "guardian": 1, "usa_today": 2, "washington_post": 3}
 
 
@@ -134,8 +137,8 @@ def get_dataloader_2(target_agency, shuffle, batch_size, phase='test'):
         train_loader = data.DataLoader(train_data,
                                        shuffle=shuffle,
                                        batch_size=batch_size)
-        # return train_data, train_loader, train_data.__len__()   # for canmd and real_fnd (train_agentNews.py) and mdaws
-        return train_loader, train_data.__len__()
+        return train_data, train_loader, train_data.__len__()   # for canmd and real_fnd (train_agentNews.py) and mdaws
+        # return train_loader, train_data.__len__()
     if phase=='test':
         print(f"phase: {phase}")
         split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']

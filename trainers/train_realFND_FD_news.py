@@ -2,7 +2,7 @@
 # coding: utf-8
 
 """
-python -m trainers.train_realFND_FD_news --batch_size 256 --event_num 4 --max_epochs 5 --hidden_dim 768 --base_model blip-2 --threshold 0.5 --few_shot_topic military
+python -m trainers.train_realFND_FD_news --batch_size 256 --event_num 4 --max_epochs 5 --hidden_dim 768 --base_model blip-2 --threshold 0.5 --few_shot_topic bbc,guardian
 """
 
 import argparse

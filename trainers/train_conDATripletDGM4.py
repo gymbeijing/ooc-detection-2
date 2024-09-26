@@ -1,27 +1,26 @@
 """
-(venv_py38) python -m trainers.train_conDATriplet --batch_size 256 --max_epochs 1 --tgt_topic military --base_model blip-2 --loss_type simclr
+(venv_py38) python -m trainers.train_conDATripletDGM4 --batch_size 256 --max_epochs 1 --target_domain bbc,guardian --base_model blip-2 --loss_type simclr
 """
-import argparse
 import logging
 import os
 import subprocess
 from itertools import count
 from multiprocessing import Process
-from model.conDA import ContrastiveLearningAndTripletLossModule, ProjectionMLP, MLLMClassificationHead, ContrastiveLearningAndTripletLossZModule
+from model.conDA import ProjectionMLP, MLLMClassificationHead, ContrastiveLearningLossZModule
 
 import torch
 import torch.distributed as dist
 from torch import nn
 from torch.nn.parallel import DistributedDataParallel
 from torch.optim import Adam
-from torch.utils.data import DataLoader, DistributedSampler, RandomSampler
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 # from transformers import *
 from itertools import cycle
 from functools import reduce
 
-from dataset.twitterCOMMsDatasetConDATriplet import get_dataloader
-from configs.configConDA import ConfigConDA
+from dataset.dgm4DatasetConDATriplet import get_dataloader
+from configs.configConDADGM4 import ConfigConDADGM4
 from torch.utils.tensorboard import SummaryWriter
 
 from sklearn.metrics import f1_score, classification_report
@@ -145,7 +144,6 @@ def train(model: nn.Module, optimizer, device: str, src_loader: DataLoader,
     tgt_train_accuracy = 0
     train_epoch_size = 0
     train_loss = 0
-    train_iteration = 0
 
     if len(src_loader) == len(tgt_loader):
         double_loader = enumerate(zip(src_loader, tgt_loader))
@@ -189,14 +187,13 @@ def train(model: nn.Module, optimizer, device: str, src_loader: DataLoader,
             train_loss += loss.item() * batch_size
 
             loop.set_postfix(loss=loss.item(), src_acc=src_train_accuracy / train_epoch_size,
-                             tgt_acc="{:.4f}".format(tgt_train_accuracy / train_epoch_size),
+                             tgt_acc=tgt_train_accuracy / train_epoch_size,
                              mmd=output_dic.mmd.item(), 
                              src_LCE_real=output_dic.src_ce_loss_real.item(),
                              src_LCE_perturb=output_dic.src_ce_loss_perturb.item(),
-                             src_LCE_negative=output_dic.src_ce_loss_negative.item(),   #### newly added negative cross-entropy loss ######
-                             src_ltriplet=output_dic.src_triplet_loss.item(),
-                             src_lctr=output_dic.src_ctr_loss.item(),
-                             refresh=False)
+                            #  src_LCE_negative=output_dic.src_ce_loss_negative.item(),   #### newly added negative cross-entropy loss ######
+                            #  src_ltriplet=output_dic.src_triplet_loss.item(),
+                             src_lctr=output_dic.src_ctr_loss.item())
 
     return {
         "train/src_accuracy": src_train_accuracy,
@@ -210,7 +207,15 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
     model.eval()
 
     validation_accuracy = 0
+    bbc_validation_accuracy = 0
+    guardian_validation_accuracy = 0
+    usa_today_validation_accuracy = 0
+    washington_post_validation_accuracy = 0
     validation_epoch_size = 0
+    bbc_epoch_size = 0
+    guardian_epoch_size = 0
+    usa_today_epoch_size = 0
+    washington_post_epoch_size = 0
     validation_loss = 0
 
     validation_f1 = 0
@@ -221,12 +226,15 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
     with tqdm(records, desc=desc) as loop, torch.no_grad():
         targets = []
         outputs = []
+        domain_labels_list = []
+        output_logits = []
         for example in loop:
             losses = []
             logit_votes = []
             # print(example)
             for data in example:
-                emb, labels = data["original_multimodal_emb"], data["original_label"]
+                # print(data)
+                emb, labels, domain_labels = data["original_multimodal_emb"], data["original_label"], data["domain_label"]
                 emb, labels = emb.to(device), labels.to(device)
                 batch_size = emb.shape[0]
 
@@ -241,27 +249,70 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
                 losses.append(loss)
                 logit_votes.append(softmax_logits)
 
+            # print(len(losses)) # 1
+            # print(len(logit_votes)) # 1
+            bbc_ind = np.array([i for i, d_label in enumerate(domain_labels) if d_label=="bbc"])
+            guardian_ind = np.array([i for i, d_label in enumerate(domain_labels) if d_label=="guardian"])
+            usa_today_ind = np.array([i for i, d_label in enumerate(domain_labels) if d_label=="usa_today"])
+            washington_post_ind = np.array([i for i, d_label in enumerate(domain_labels) if d_label=="washington_post"])
+
             loss = torch.stack(losses).mean(dim=0)
             logits = torch.stack(logit_votes).mean(dim=0)
-
+            
             batch_accuracy = accuracy_sum(logits, labels)
             validation_accuracy += batch_accuracy
             validation_epoch_size += batch_size
             validation_loss += loss.item() * batch_size
+
+            bbc_batch_accuracy = accuracy_sum(logits[bbc_ind], labels[bbc_ind])
+            bbc_validation_accuracy += bbc_batch_accuracy
+            guardian_batch_accuracy = accuracy_sum(logits[guardian_ind], labels[guardian_ind])
+            guardian_validation_accuracy += guardian_batch_accuracy
+            usa_today_batch_accuracy = accuracy_sum(logits[usa_today_ind], labels[usa_today_ind])
+            usa_today_validation_accuracy += usa_today_batch_accuracy
+            washington_post_batch_accuracy = accuracy_sum(logits[washington_post_ind], labels[washington_post_ind])
+            washington_post_validation_accuracy += washington_post_batch_accuracy
             
+            bbc_epoch_size += bbc_ind.shape[0]
+            guardian_epoch_size += guardian_ind.shape[0]
+            usa_today_epoch_size += usa_today_ind.shape[0]
+            washington_post_epoch_size += washington_post_ind.shape[0]
+
             classifications, labels = return_classification(logits, labels)
             targets.append(labels)
             outputs.append(classifications)
+            output_logits.append(logits.cpu())
+            domain_labels_list += list(domain_labels)
 
-            loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size))
+
+            # loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
+            #                  bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size),
+            #                  usa_today_acc="{:.4f}".format(usa_today_validation_accuracy / usa_today_epoch_size), washington_post_acc="{:.4f}".format(washington_post_validation_accuracy / washington_post_epoch_size))
+            # loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
+            #                  bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size))
+            loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
+                             guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size))
         
         outputs = np.concatenate(outputs)
         targets = np.concatenate(targets)
+        output_logits = np.concatenate(output_logits)
+        # f1 = dict()
+        print(f"overall f1: {validation_f1}")
+        pred_logits = output_logits[np.arange(output_logits.shape[0]), (1-targets).flatten()]
+        accuracy, eer, eer_threshold = accuracy_at_eer(targets, pred_logits)
+        print(f"Accuracy at EER: {accuracy}")
+        print(f"EER: {eer}")
+        print(f"Threshold at EER: {eer_threshold}")
         auc_score = compute_auc(targets, outputs)
         print(f"AUC score: {auc_score}")
-        validation_f1 = f1_score(targets, outputs, average='macro')
-        print(f"f1: {validation_f1}")
+        domain_list = ['bbc', 'guardian', 'usa_today', 'washington_post']
+        # for domain in domain_list:
+        # # for domain in cfg.args.target_domain.split(','):
+        #     inds = [idx for idx, domain_name in enumerate(domain_labels_list) if domain_name == domain]
+        #     f1[domain] = f1_score(targets[inds], outputs[inds], average='macro', zero_division=0)
+        f1 = f1_score(targets, outputs, average='macro', zero_division=0)
         cls_report = classification_report(targets, outputs, digits=4, zero_division=0)
+        print(f1)
         print(cls_report)
 
     return {
@@ -284,7 +335,7 @@ def test_time_adaptation(model, test_loader):
         z = model.mlp(emb)
         _ = model.model(z)
 
-
+    
 def test_time_adaptation_train(model, test_loader):
     model.eval()   # Set other modules to eval mode
     pseudo_labels, kept_indices = get_pseudo_label(model, test_loader)
@@ -318,10 +369,42 @@ def test_time_adaptation_train(model, test_loader):
         optimizer.step()
 
 
+def test_time_adaptation_train_pseudo(model, test_pseudo_loader):
+    model.eval()   # Set other modules to eval mode
+    classifier = model.model
+    classifier.train()  # Set the classifier to train mode for adaptation
+    learning_rate = 2e-5
+    weight_decay = 0
+    optimizer = Adam(classifier.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    for batch_idx, data in enumerate(test_pseudo_loader):
+        emb, pseudo_labels = data["original_multimodal_emb"], data["original_label"]
+        emb, labels = emb.to(device), pseudo_labels.to(device)
+
+        # For ContrastiveLearningAndTripletLossModule, use:
+        # outputs = model(emb) # Updating EMA of E[x] and Var[x]
+
+        # For ContrastiveLearningAndTripletLossZModule, use:
+        z = model.mlp(emb)
+
+        optimizer.zero_grad()
+        logits = classifier(z)
+        loss = classifier.compute_loss(logits, labels)
+
+        # (4) Back-propagation: compute the gradients
+        # loss.backward()
+        loss.backward()   # for mask
+
+        # (5) Update the model parameters
+        optimizer.step()
+
+        # if batch_idx > 100:
+        #     break
+
+
 def get_pseudo_label(model, test_loader):
     model.eval()
     pseudo_labels = []
-    conf_threshold = 0.8
+    conf_threshold = 0.77
     kept_indices = []
     for batch_idx, data in enumerate(test_loader):
         emb, labels = data["original_multimodal_emb"], data["original_label"]
@@ -425,7 +508,7 @@ def run(cfg, device):
     mlp = ProjectionMLP(cfg).to(device)
 
     # (3) the entire contrastive learning framework
-    model = ContrastiveLearningAndTripletLossZModule(model=mllm_cls_head, mlp=mlp, loss_type=loss_type, logger=writer, device=device,
+    model = ContrastiveLearningLossZModule(model=mllm_cls_head, mlp=mlp, loss_type=loss_type, logger=writer, device=device,
                                       lambda_w=lambda_w)
     # one process
     if rank == 0:
@@ -437,15 +520,19 @@ def run(cfg, device):
     if world_size > 1:
         model = DistributedDataParallel(model, [rank], output_device=rank, find_unused_parameters=True)
 
-    src_excluded_topic = [cfg.args.tgt_topic]
-    tgt_excluded_topic = ['climate', 'covid', 'military']
-    tgt_excluded_topic.remove(cfg.args.tgt_topic)
+    src_excluded_topic = cfg.args.target_domain.split(',')   # e.g. bbc
+    tgt_excluded_topic = ['bbc', 'guardian', 'usa_today', 'washington_post']
+    for topic in src_excluded_topic:
+        tgt_excluded_topic.remove(topic)   # e.g. ['guardian', 'usa_today', 'washington_post']
+    tgt_excluded_topic.append('bbc')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
+    print(f"src_excluded_topic: {src_excluded_topic}")
+    print(f"tgt_excluded_topic: {tgt_excluded_topic}")
     # loading data
-    src_train_loader, src_train_dataset_size = get_dataloader(cfg, few_shot_topic=src_excluded_topic, shuffle=True, phase="train")
-    src_validation_loader, src_validation_dataset_size = get_dataloader(cfg, few_shot_topic=src_excluded_topic, shuffle=False, phase="val")
+    src_train_loader, src_train_dataset_size = get_dataloader(cfg, target_domain=src_excluded_topic, shuffle=True, phase="train")
+    src_validation_loader, src_validation_dataset_size = get_dataloader(cfg, target_domain=src_excluded_topic, shuffle=False, phase="test")
 
-    tgt_train_loader, tgt_train_dataset_size = get_dataloader(cfg, few_shot_topic=tgt_excluded_topic, shuffle=True, phase="train")
-    tgt_validation_loader, tgt_validation_dataset_size = get_dataloader(cfg, few_shot_topic=tgt_excluded_topic, shuffle=False, phase="val")
+    tgt_train_loader, tgt_train_dataset_size = get_dataloader(cfg, target_domain=tgt_excluded_topic, shuffle=True, phase="train")
+    tgt_validation_loader, tgt_validation_dataset_size = get_dataloader(cfg, target_domain=tgt_excluded_topic, shuffle=False, phase="test")
 
     print(f"source train dataset size: {src_train_dataset_size}, target train dataset size: {tgt_train_dataset_size}")
     print(f"source validation dataset size: {src_validation_dataset_size}, target validation dataset size: {tgt_validation_dataset_size}")
@@ -472,8 +559,7 @@ def run(cfg, device):
         ## Test-time Adaptation ###
         # test_time_adaptation(mllm_cls_head, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossModule
         # test_time_adaptation(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
-        test_time_adaptation_train(model, tgt_validation_loader)   # compatible with ContrastiveLearningAndTripletLossZModule
-
+        test_time_adaptation_train(model, tgt_validation_loader)
         ###########################
         # validation_metrics = validate(mllm_cls_head, device,
         #                               tgt_validation_loader)  ## we are only using supervision on the source, compatible with ContrastiveLearningAndTripletLossModule
@@ -496,7 +582,7 @@ def run(cfg, device):
                 without_progress = 0
                 best_validation_accuracy = combined_metrics["validation/accuracy"]
 
-                # model_to_save = mllm_cls_head
+                model_to_save = mllm_cls_head
                 model_to_save = model
                 torch.save(dict(
                     epoch=epoch,
@@ -543,7 +629,7 @@ def main(cfg, device):
 
 
 if __name__ == '__main__':
-    cfg = ConfigConDA()
+    cfg = ConfigConDADGM4()
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     logger.info(device)
 

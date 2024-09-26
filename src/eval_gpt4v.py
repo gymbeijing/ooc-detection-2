@@ -10,7 +10,7 @@ from tqdm import tqdm
 import argparse
 
 # OpenAI API Key
-api_key = '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'
+api_key = '<your-api-key>'
 
 headers = {
   "Content-Type": "application/json",

@@ -21,6 +21,8 @@ from sklearn.metrics import f1_score
 import numpy as np
 
 from dataset.newsCLIPpingsDataset import get_dataloader_2
+from sklearn.metrics import f1_score, classification_report
+from utils.helper import accuracy_at_eer, compute_auc
 
 """
 python -m trainers.blip2_full_train_newsCLIPpings --bs 256 --epochs 10 --target_agency bbc
@@ -238,11 +240,19 @@ def test(net, iterator, criterion, device):
             #     inds = np.array(inds)
             #     num_correct[topic] += sum(top_pred[inds] == y[inds])
         f1 = dict()
+        cls_report = dict()
+        auc_score = dict()
         domain_list = ['bbc', 'guardian', 'usa_today', 'washington_post']
         for domain in domain_list:
+            print(domain)
             inds = [idx for idx, domain_name in enumerate(domain_labels_list) if domain_name == domain]
             f1[domain] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
-        print(f1)
+            print(f"f1: {f1[domain]}")
+            cls_report[domain] = classification_report(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], digits=4, zero_division=0)
+            print(f"classification report: {cls_report[domain]}")
+            auc_score[domain] = compute_auc(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds])
+            print(f"auc score: {auc_score[domain]}")
+        # print(f1)
         logger.info("Overall testing accuracy %.4f, bbc testing accuracy %.4f, guardian testing accuracy %.4f, "
                     "usa_today testing accuracy %.4f, washington_post testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
                                                                     num_correct["bbc"] / num_total["bbc"],

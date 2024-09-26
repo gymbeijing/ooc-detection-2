@@ -18,6 +18,8 @@ from model.canmd import ContrastiveModel
 from torch.autograd import Variable
 from torch.optim import AdamW
 from dataset.newsCLIPpingsDataset import get_dataloader_2
+from sklearn.metrics import f1_score, classification_report
+from utils.helper import accuracy_at_eer, compute_auc
 
 # Logger
 logger = logging.getLogger()
@@ -65,7 +67,10 @@ def evaluation(args, model, eval_dataloader):
     final_f1 = f1_score(eval_labels, eval_preds)
     final_precision = precision_score(eval_labels, eval_preds)
     final_recall = recall_score(eval_labels, eval_preds)
-    
+    cls_report = classification_report(eval_labels, eval_preds, digits=4, zero_division=0)
+    auc_score = compute_auc(eval_labels, eval_preds)
+    print(cls_report)
+    print(auc_score)
     return final_bacc, final_acc, final_f1, final_precision, final_recall
 
 

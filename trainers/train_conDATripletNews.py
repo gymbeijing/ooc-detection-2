@@ -291,7 +291,7 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             # loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
             #                  bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size))
             loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
-                             bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size))
+                             usa_today_acc="{:.4f}".format(usa_today_validation_accuracy / usa_today_epoch_size))
         
         outputs = np.concatenate(outputs)
         targets = np.concatenate(targets)
@@ -404,7 +404,7 @@ def test_time_adaptation_train_pseudo(model, test_pseudo_loader):
 def get_pseudo_label(model, test_loader):
     model.eval()
     pseudo_labels = []
-    conf_threshold = 0.77
+    conf_threshold = 0.77   # optimal: 0.77
     kept_indices = []
     for batch_idx, data in enumerate(test_loader):
         emb, labels = data["original_multimodal_emb"], data["original_label"]
@@ -524,7 +524,7 @@ def run(cfg, device):
     tgt_excluded_topic = ['bbc', 'guardian', 'usa_today', 'washington_post']
     for topic in src_excluded_topic:
         tgt_excluded_topic.remove(topic)   # e.g. ['guardian', 'usa_today', 'washington_post']
-    tgt_excluded_topic.append('guardian')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
+    tgt_excluded_topic.append('washington_post')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
     print(f"src_excluded_topic: {src_excluded_topic}")
     print(f"tgt_excluded_topic: {tgt_excluded_topic}")
     # loading data

@@ -31,6 +31,8 @@ import logging
 import argparse
 from model.cada import CADA
 from configs.configEANNNews import ConfigEANNNews
+from sklearn.metrics import f1_score, classification_report
+from utils.helper import accuracy_at_eer, compute_auc
 
 # Logger
 logger = logging.getLogger()
@@ -40,54 +42,6 @@ logging.basicConfig(
 )
 
 softmax = nn.Softmax(dim=1)
-
-# def train(train_iterator, val_iterator, device):
-
-#     lr = 0.0001
-#     optimizer = optim.Adam(net.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=1e-5)
-
-#     criterion = nn.CrossEntropyLoss()
-#     criterion.to(device)
-
-#     for epoch in range(EPOCHS):
-#         net.train()
-#         total_loss = 0
-#         num_correct = 0
-#         num_total = 0
-#         for i, batch in tqdm(enumerate(train_iterator, 0), desc='iterations'):
-#             text_inputs = batch["text_emb"].to(device)
-#             image_inputs = batch["image_emb"].to(device)
-#             labels = batch["label"].to(device)
-#             domain_labels = batch["domain_id"].to(device)
-#             text_inputs, image_inputs, labels, domain_labels = Variable(text_inputs), Variable(image_inputs), Variable(labels), Variable(domain_labels)
-
-#             net.zero_grad()
-#             y_preds, domain_preds = net(text_inputs, image_inputs)
-#             loss = criterion(y_preds, labels) + criterion(domain_preds, domain_labels)
-
-#             loss.backward()
-#             optimizer.step()
-
-#             total_loss += loss.item()
-
-#             _, top_pred = y_preds.topk(1, 1)
-#             y = labels.cpu()
-#             batch_size = y.shape[0]
-#             top_pred = top_pred.cpu().view(batch_size)
-
-#             num_correct += sum(top_pred == y).item()
-#             num_total += batch_size
-
-#             if i % 1000 == 0:
-#                 logger.info("Epoch [%d/%d] %d-th batch: Training accuracy: %.3f, loss: %.3f" % (
-#                 epoch + 1, EPOCHS, i, num_correct / num_total, total_loss / num_total))
-
-#         logger.info("Epoch [%d/%d]: Training accuracy: %.3f, loss: %.3f" % (
-#         epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
-
-#         test(net, val_iterator, criterion, device)
-
-#     return net
 
 
 def train(train_iterator, val_iterator, device):
@@ -156,42 +110,6 @@ def train(train_iterator, val_iterator, device):
     return net
 
 
-# def test(net, iterator, criterion, device):
-#     net.eval()
-
-#     with torch.no_grad():
-#         total_loss = 0
-#         num_correct = 0
-#         num_total = 0
-#         for i, batch in tqdm(enumerate(iterator, 0), desc='iterations'):
-#             text_inputs = batch["text_emb"].to(device)
-#             image_inputs = batch["image_emb"].to(device)
-#             labels = batch["label"].to(device)
-#             domain_labels = batch["domain_id"].to(device)
-#             text_inputs, image_inputs, labels, domain_labels = Variable(text_inputs), Variable(image_inputs), Variable(labels), Variable(domain_labels)
-
-#             y_preds, domain_preds = net(text_inputs, image_inputs)
-#             loss = criterion(y_preds, labels) + criterion(domain_preds, domain_labels)
-
-#             total_loss += loss.item()
-
-#             _, top_pred = y_preds.topk(1, 1)
-#             y = labels.cpu()
-#             batch_size = y.shape[0]
-#             top_pred = top_pred.cpu().view(batch_size)
-
-#             num_correct += sum(top_pred == y).item()
-#             num_total += batch_size
-
-#             if i % 1000 == 0:
-#                 logger.info("%d-th batch: Testing accuracy %.3f, loss: %.3f" % (
-#                 i, num_correct / num_total, total_loss / num_total))
-
-#         logger.info("Testing accuracy %.3f, loss: %.3f" % (num_correct / num_total, total_loss / num_total))
-
-#     return
-
-
 def test(net, iterator, criterion, device):
     net.eval()
     softmax = nn.Softmax(dim=1)
@@ -201,6 +119,8 @@ def test(net, iterator, criterion, device):
         num_correct = dict()
         num_total = dict()
         f1 = dict()
+        cls_report = dict()
+        auc_score = dict()
         num_correct["all"] = 0
         num_total["all"] = 0
         num_correct["bbc"] = 0
@@ -266,8 +186,14 @@ def test(net, iterator, criterion, device):
                     i, num_correct["all"] / num_total["all"], total_loss / num_total["all"]))
                 
         for topic in topic_list:
+            print(topic)
             inds = [idx for idx, topic_fullname in enumerate(topic_label_list) if topic in topic_fullname]
             f1[topic] = f1_score(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], average='macro')
+            print(f"f1: {f1[topic]}")
+            cls_report[topic] = classification_report(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds], digits=4, zero_division=0)
+            print(f"classification report: {cls_report[topic]}")
+            auc_score[topic] = compute_auc(np.concatenate(y_true_list)[inds], np.concatenate(y_pred_list)[inds])
+            print(f"auc score: {auc_score[topic]}")
 
         logger.info("Overall testing accuracy %.4f, bbc testing accuracy %.4f, guardian testing accuracy %.4f, "
                     "usa_today testing accuracy %.4f, washington_post testing accuracy %.4f, loss: %.4f" % (num_correct["all"] / num_total["all"],
