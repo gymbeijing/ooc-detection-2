@@ -74,7 +74,7 @@ class ConfigConDA(object):
         self.args.num_labels = 2
         self.args.learning_rate = 2e-4   # original: 2e-5
         self.args.model_save_path = "./saved_model"
-        self.args.model_save_name = "ConDA_M.pt"
+        self.args.model_save_name = "ConDA_Cv.pt"
         self.args.classifier_dropout = 0.2
 
 
@@ -111,14 +111,14 @@ if __name__ == "__main__":
 
     # (3) the entire contrastive learning framework
     model = ContrastiveLearningAndTripletLossZModule(model=mllm_cls_head, mlp=mlp, loss_type="simclr", logger=None, device=device,
-                                        lambda_w=0.5)
-    model.load_state_dict(torch.load('./saved_model/ConDA_Cl.pt')["model_state_dict"])
+                                        lambda_w=0.5, lambda_mmd=1.0)
+    model.load_state_dict(torch.load('./saved_model/ConDA_Cv.pt')["model_state_dict"])
     
     emb_tensor, z_tensor, topic_list = validate(model, device, val_iterator)
     # print(emb_tensor.shape)
     # torch.save(emb_tensor, './output/emb.pt')
     print(z_tensor.shape)
-    torch.save(z_tensor, './output/z_Cl.pt')
+    torch.save(z_tensor, './output/z_Cv.pt')
     print(len(topic_list))
     
     # import json

@@ -30,6 +30,8 @@ def parse():
     p.add_argument("--lambda_w", type=float, required=False, default=0.5,
                    help="weight of the contrastive loss")
     p.add_argument("--loss_type", type=str, required=True, help="simclr")
+    p.add_argument("--lambda_mmd", type=float, required=False, default=1.0,
+                   help="weight of the MMD")
 
     args = p.parse_args()
     return p, args

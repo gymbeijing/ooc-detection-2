@@ -385,6 +385,7 @@ def run(cfg, device):
     weight_decay = 0
     load_from_checkpoint = False
     lambda_w = cfg.args.lambda_w
+    lambda_mmd = cfg.args.lambda_mmd
     checkpoint_name = ''
 
     args = locals()   # returns a dictionary containing the current local symbol table
@@ -426,7 +427,7 @@ def run(cfg, device):
 
     # (3) the entire contrastive learning framework
     model = ContrastiveLearningAndTripletLossZModule(model=mllm_cls_head, mlp=mlp, loss_type=loss_type, logger=writer, device=device,
-                                      lambda_w=lambda_w)
+                                      lambda_w=lambda_w, lambda_mmd=lambda_mmd)
     # one process
     if rank == 0:
         summary(model)

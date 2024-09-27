@@ -16,7 +16,7 @@ class ConfigConDA(object):
         self.args.num_labels = 2
         self.args.learning_rate = 2e-4   # original: 2e-5
         self.args.model_save_path = "./saved_model"
-        self.args.model_save_name = "ConDA_Cl.pt"
+        self.args.model_save_name = "ConDA_Cv.pt"
         self.args.classifier_dropout = 0.2
 
 
@@ -30,6 +30,8 @@ def parse():
     p.add_argument("--lambda_w", type=float, required=False, default=0.5,
                    help="weight of the contrastive loss")
     p.add_argument("--loss_type", type=str, required=True, help="simclr")
+    p.add_argument("--lambda_mmd", type=float, required=False, default=1.0,
+                   help="weight of the MMD")
 
     args = p.parse_args()
     return p, args

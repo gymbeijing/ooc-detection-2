@@ -146,7 +146,7 @@ class SimCLRContrastiveLoss(nn.Module):
 
 # (3b) The overall model
 class ContrastiveLearningModule(nn.Module):
-    def __init__(self, model, mlp, loss_type, logger, device, lambda_w):
+    def __init__(self, model, mlp, loss_type, logger, device, lambda_w, lambda_mmd):
         # model, mlp is initialized outside
         super().__init__()
         self.model = model   # RobertaForContrastiveLearning in the original paper, here is MLLMClassificationHead
@@ -155,6 +155,7 @@ class ContrastiveLearningModule(nn.Module):
         self.logger = logger
         self.device = device   # device
         self.lambda_w = lambda_w
+        self.lambda_mmd = lambda_mmd
 
     def forward(self, src_emb, src_perturb_emb, tgt_emb, tgt_perturb_emb, src_labels, tgt_labels):
 
@@ -337,7 +338,7 @@ class ContrastiveLearningAndTripletLossModule(nn.Module):
 
 # (3b)'' The overall model + our proposed triplet loss + input z to the classifier instead of h
 class ContrastiveLearningAndTripletLossZModule(nn.Module):
-    def __init__(self, model, mlp, loss_type, logger, device, lambda_w):
+    def __init__(self, model, mlp, loss_type, logger, device, lambda_w, lambda_mmd):
         # model, mlp is initialized outside
         super().__init__()
         self.model = model   # RobertaForContrastiveLearning in the original paper, here is MLLMClassificationHead
@@ -346,6 +347,7 @@ class ContrastiveLearningAndTripletLossZModule(nn.Module):
         self.logger = logger
         self.device = device   # device
         self.lambda_w = lambda_w
+        self.lambda_mmd = lambda_mmd
 
     def forward(self, src_emb, src_perturb_emb, src_negative_emb, tgt_emb, tgt_perturb_emb, src_labels, tgt_labels):
 
@@ -407,7 +409,8 @@ class ContrastiveLearningAndTripletLossZModule(nn.Module):
 
         use_ce_perturb = True
         use_both_ce_losses = True
-        lambda_mmd = 1.0   # original: 1.0
+        # lambda_mmd = 1.0   # original: 1.0
+        lambda_mmd = self.lambda_mmd
 
         if not use_both_ce_losses:
             loss = self.lambda_w * (src_lctr + tgt_lctr) / 2 + lambda_mmd * mmd
@@ -438,7 +441,7 @@ class ContrastiveLearningAndTripletLossZModule(nn.Module):
 
 # (3b)''' The overall model + our proposed triplet loss + input z to the classifier instead of h - lce_neg - ltriplet
 class ContrastiveLearningLossZModule(nn.Module):
-    def __init__(self, model, mlp, loss_type, logger, device, lambda_w):
+    def __init__(self, model, mlp, loss_type, logger, device, lambda_w, lambda_mmd):
         # model, mlp is initialized outside
         super().__init__()
         self.model = model   # RobertaForContrastiveLearning in the original paper, here is MLLMClassificationHead
@@ -447,6 +450,7 @@ class ContrastiveLearningLossZModule(nn.Module):
         self.logger = logger
         self.device = device   # device
         self.lambda_w = lambda_w
+        self.lambda_mmd = lambda_mmd
 
     def forward(self, src_emb, src_perturb_emb, src_negative_emb, tgt_emb, tgt_perturb_emb, src_labels, tgt_labels):
 
@@ -506,7 +510,8 @@ class ContrastiveLearningLossZModule(nn.Module):
 
         use_ce_perturb = True
         use_both_ce_losses = True
-        lambda_mmd = 1.0   # original: 1.0
+        # lambda_mmd = 1.0   # original: 1.0
+        lambda_mmd = self.lambda_mmd
 
         if not use_both_ce_losses:
             loss = self.lambda_w * (src_lctr + tgt_lctr) / 2 + lambda_mmd * mmd

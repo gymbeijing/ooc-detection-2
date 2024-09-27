@@ -86,8 +86,8 @@ def parse():
 def get_dataset(root_dir, data_dir, img_dir, split, phase, target_domain=None):
     # print(f"      split: {split}")
     original_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
-    positive_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'
-    negative_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'   # placeholder
+    positive_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'
+    negative_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'   # placeholder
     label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'   # original and positive share the labels
     news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'
     target_domain = target_domain
@@ -102,7 +102,7 @@ def get_dataloader(cfg, phase='test'):   # to be put into cfg
     split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']
     split_datasets = []
     for split in split_list:
-        dataset = get_dataset(root_dir=root_dir, data_dir=data_dir, img_dir=img_dir, split=split, phase=phase)
+        dataset = get_dataset(root_dir=root_dir, data_dir=data_dir, img_dir=img_dir, split=split, phase=phase, target_domain="guardian")
         split_datasets.append(dataset)
 
     test_dataset = data.ConcatDataset(split_datasets)
@@ -127,7 +127,7 @@ if __name__ == "__main__":
 
     # (3) the entire contrastive learning framework
     model = ContrastiveLearningLossZModule(model=mllm_cls_head, mlp=mlp, loss_type="simclr", logger=None, device=device,
-                                        lambda_w=0.5)
+                                        lambda_w=0.5, lambda_mmd=1.0)
     model.load_state_dict(torch.load('./saved_model/ConDANews.pt')["model_state_dict"])
     
     emb_tensor, z_tensor, agency_list = validate(model, device, val_iterator)

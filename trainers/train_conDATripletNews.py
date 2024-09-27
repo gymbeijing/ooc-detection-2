@@ -291,7 +291,7 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             # loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
             #                  bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size))
             loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
-                             usa_today_acc="{:.4f}".format(usa_today_validation_accuracy / usa_today_epoch_size))
+                             bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size))
         
         outputs = np.concatenate(outputs)
         targets = np.concatenate(targets)
@@ -468,6 +468,7 @@ def run(cfg, device):
     weight_decay = 0
     load_from_checkpoint = False
     lambda_w = cfg.args.lambda_w
+    lambda_mmd = cfg.args.lambda_mmd
     checkpoint_name = ''
 
     args = locals()   # returns a dictionary containing the current local symbol table
@@ -509,7 +510,7 @@ def run(cfg, device):
 
     # (3) the entire contrastive learning framework
     model = ContrastiveLearningLossZModule(model=mllm_cls_head, mlp=mlp, loss_type=loss_type, logger=writer, device=device,
-                                      lambda_w=lambda_w)
+                                      lambda_w=lambda_w, lambda_mmd=lambda_mmd)
     # one process
     if rank == 0:
         summary(model)
@@ -524,7 +525,7 @@ def run(cfg, device):
     tgt_excluded_topic = ['bbc', 'guardian', 'usa_today', 'washington_post']
     for topic in src_excluded_topic:
         tgt_excluded_topic.remove(topic)   # e.g. ['guardian', 'usa_today', 'washington_post']
-    tgt_excluded_topic.append('washington_post')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
+    tgt_excluded_topic.append('guardian')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
     print(f"src_excluded_topic: {src_excluded_topic}")
     print(f"tgt_excluded_topic: {tgt_excluded_topic}")
     # loading data
