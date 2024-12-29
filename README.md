@@ -27,7 +27,7 @@ conda activate venv_py38
 pip install -r requirements_py38.txt
 ```
 
-## Running MMVAE
+## Running ConDA-TTT
 ```
 (venv_py38) python -m trainers.train_conDATriplet --batch_size 256 --max_epochs 10 --tgt_topic military --base_model blip-2 --loss_type simclr
 ```
