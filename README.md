@@ -2,20 +2,7 @@
 Yimeng Gu, Mengqi Zhang, Ignacio Castro, Shu Wu, Gareth Tyson
 
 ## Introduction
-This repository contains code of our paper "Contrastive Domain Adaptation with Test-time Training for Out-of-Context Detection"..
-
-If you find this repository or the paper useful, please cite it with:
-
-```
-@article{gu2024learning,
-  title={Learning Domain-Invariant Features for Out-of-Context News Detection},
-  author={Gu, Yimeng and Zhang, Mengqi and Castro, Ignacio and Wu, Shu and Tyson, Gareth},
-  journal={arXiv preprint arXiv:2406.07430},
-  year={2024}
-}
-```
-
-For any questions regarding this repository or the paper, please contact Yimeng Gu (yimeng.gu@qmul.ac.uk).
+This repository contains code of our paper "Contrastive Domain Adaptation with Test-time Training for Out-of-Context Detection".
 
 ## Downloading the dataset
 You may download the TwitterCOMMs dataset and the NewsCLIPpings dataset following TBD.
@@ -31,3 +18,16 @@ pip install -r requirements_py38.txt
 ```
 (venv_py38) python -m trainers.train_conDATriplet --batch_size 256 --max_epochs 10 --tgt_topic military --base_model blip-2 --loss_type simclr
 ```
+
+If you find this repository or the paper useful, please cite it with:
+
+```
+@article{gu2024learning,
+  title={Learning Domain-Invariant Features for Out-of-Context News Detection},
+  author={Gu, Yimeng and Zhang, Mengqi and Castro, Ignacio and Wu, Shu and Tyson, Gareth},
+  journal={arXiv preprint arXiv:2406.07430},
+  year={2024}
+}
+```
+
+For any inquiries regarding this repository or the paper, please contact Yimeng Gu (yimeng.gu@qmul.ac.uk).
