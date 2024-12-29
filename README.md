@@ -35,4 +35,4 @@ If you find this repository or the paper useful, please cite it with:
 }
 ```
 
-For any inquiries regarding this repository or the paper, please contact Yimeng Gu (yimeng.gu@qmul.ac.uk).
+For any inquiries about this repository or the paper, please contact Yimeng Gu (yimeng.gu@qmul.ac.uk).
