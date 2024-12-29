@@ -7,7 +7,7 @@ This repository contains code of our paper "Contrastive Domain Adaptation with T
 ## Downloading the dataset
 You may download the TwitterCOMMs dataset and the NewsCLIPpings dataset following TBD.
 
-## Python Environment
+## Set up the Environment
 ```
 conda create -n venv_py38 python=3.8 -y
 conda activate venv_py38
