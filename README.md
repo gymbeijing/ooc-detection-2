@@ -15,8 +15,13 @@ pip install -r requirements_py38.txt
 ```
 
 ## Running ConDA-TTT
+For Twitter-COMMs:
 ```
-(venv_py38) python -m trainers.train_conDATriplet --batch_size 256 --max_epochs 10 --tgt_topic military --base_model blip-2 --loss_type simclr
+(venv_py38) python -m trainers.train_conDATriplet --batch_size 256 --max_epochs 10 --tgt_topic climate --base_model blip-2 --loss_type simclr
+```
+For NewsCLIPpings:
+```
+(venv_py38) python -m trainers.train_conDATripletNews --batch_size 256 --max_epochs 10 --target_domain bbc,guardian --base_model blip-2 --loss_type simclr
 ```
 
 If you find this repository or the paper useful, please cite it with:
