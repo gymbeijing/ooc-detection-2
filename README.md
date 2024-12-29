@@ -5,7 +5,7 @@ Yimeng Gu, Mengqi Zhang, Ignacio Castro, Shu Wu, Gareth Tyson
 This repository contains code of our paper "Contrastive Domain Adaptation with Test-time Training for Out-of-Context Detection".
 
 ## Downloading the dataset
-You may download the TwitterCOMMs dataset and the NewsCLIPpings dataset following TBD.
+You can find the TwitterCOMMs dataset and the NewsCLIPpings dataset following the instructions in their repository.
 
 ## Set up the Environment
 ```
