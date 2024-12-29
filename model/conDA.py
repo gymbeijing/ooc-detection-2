@@ -117,7 +117,11 @@ class SimCLRContrastiveLoss(nn.Module):
         super().__init__()
         self.batch_size = batch_size
         self.register_buffer("temperature", torch.tensor(temperature))
+        # tensor = (~torch.eye(self.batch_size * 2, self.batch_size * 2, dtype=bool)).float()
+        # tensor[int(1.5 * self.batch_size):, :] = 0
+        # tensor[:, int(1.5 * self.batch_size):] = 0
         self.register_buffer("negatives_mask", (~torch.eye(self.batch_size * 2, self.batch_size * 2, dtype=bool)).float())
+        # self.register_buffer("negatives_mask", tensor)
 
     def forward(self, emb_i, emb_j):
         """

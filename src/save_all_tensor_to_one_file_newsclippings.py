@@ -62,12 +62,13 @@ class NewsDataset(Dataset):
         ### for image augmentation ###
         # raw_image = self.transforms(raw_image)
         ##############################
-        image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
-        text_input = txt_processors["eval"](caption)
+        # image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
+        # text_input = txt_processors["eval"](caption)
 
         falsified = ann["falsified"]
 
-        return image, text_input, image_path, falsified, news_source
+        # return image, text_input, image_path, falsified, news_source
+        return image_path, caption   # for saving metadata
 
 
 def get_multimodal_feature(dataloader, model, mode):
@@ -161,6 +162,18 @@ def get_img_dir_and_json(phase, split):
         # df_train = df_train.drop(delete_row)
 
         return test_img_dir, test_data
+    
+
+def get_metadata(dataloader):
+    temp_caption_list = []
+    temp_image_path_list = []
+    for i, (batch_image_path, batch_caption) in tqdm(enumerate(dataloader, 0)):
+        temp_caption_list += list(batch_caption)
+        temp_image_path_list += list(batch_image_path)
+
+    out_caption_dict = {"caption": temp_caption_list}
+    out_image_path_dict = {"image_path": temp_image_path_list}
+    return out_caption_dict, out_image_path_dict
 
     
 if __name__ == '__main__':
@@ -208,6 +221,17 @@ if __name__ == '__main__':
     logger.info("Preparing dataset and dataloader")
     image_text_metadata = NewsDataset(img_dir, df, vis_processors, txt_processors)
     image_text_metadata_loader = data.DataLoader(image_text_metadata, shuffle=False, batch_size=256)
+
+    caption_dict, image_path_dict = get_metadata(image_text_metadata_loader)
+
+    root_dir = '/import/network-temp/yimengg/NewsCLIPpings/processed_data'
+    logger.info(f"Saving dictionary to {root_dir}/metadata/{base_model}_{split}_{mode}_caption_{phase}_GaussianBlur.json")
+    save_json(caption_dict,
+              f'{root_dir}/metadata/{base_model}_{split}_{mode}_caption_{phase}_GaussianBlur.json')
+    
+    logger.info(f"Saving dictionary to {root_dir}/metadata/{base_model}_{split}_{mode}_image_path_{phase}_GaussianBlur.json")
+    save_json(image_path_dict,
+              f'{root_dir}/metadata/{base_model}_{split}_{mode}_image_path_{phase}_GaussianBlur.json')
 
     logger.info("Getting multimodal feature")
     image_path_dict, multimodal_feature_tensor, label_tensor, news_source_dict = get_multimodal_feature(image_text_metadata_loader, model, mode)

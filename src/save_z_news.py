@@ -34,14 +34,18 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
     emb_list = []
     z_list = []
     agency_list = []
+    topic_list = []
+    labels_list = []
 
     with tqdm(records, desc=desc) as loop, torch.no_grad():
         for example in loop:
             # print(example)
             for data in example:
-                emb, labels, agency = data["original_multimodal_emb"], data["original_label"], data["domain_label"]
+                emb, labels, agency, topic = data["original_multimodal_emb"], data["original_label"], data["domain_label"], data["topic_label"]
                 emb_list.append(emb)
                 agency_list += agency
+                topic_list += topic
+                labels_list += labels
                 emb, labels = emb.to(device), labels.to(device)
 
                 ###### For the z instead of h input to the model ######
@@ -52,7 +56,7 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
         emb_tensor = torch.cat(emb_list)
         z_tensor = torch.cat(z_list)
 
-    return emb_tensor, z_tensor, agency_list
+    return emb_tensor, z_tensor, agency_list, topic_list, labels_list
 
 
 class ConfigConDANews(object):
@@ -90,8 +94,9 @@ def get_dataset(root_dir, data_dir, img_dir, split, phase, target_domain=None):
     negative_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_original.pt'   # placeholder
     label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'   # original and positive share the labels
     news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'
+    topic_path = f'{root_dir}/topic/{split}_topic_{phase}_GaussianBlur.json'
     target_domain = target_domain
-    dataset = NewsCLIPpingsDatasetConDATriplet(img_dir, original_multimodal_embeds_path, positive_multimodal_embeds_path, negative_multimodal_embeds_path, label_path, news_source_path, target_domain, phase)
+    dataset = NewsCLIPpingsDatasetConDATriplet(img_dir, original_multimodal_embeds_path, positive_multimodal_embeds_path, negative_multimodal_embeds_path, label_path, news_source_path, topic_path, target_domain, phase)
     return dataset
 
 
@@ -102,7 +107,8 @@ def get_dataloader(cfg, phase='test'):   # to be put into cfg
     split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']
     split_datasets = []
     for split in split_list:
-        dataset = get_dataset(root_dir=root_dir, data_dir=data_dir, img_dir=img_dir, split=split, phase=phase, target_domain="guardian")
+        # dataset = get_dataset(root_dir=root_dir, data_dir=data_dir, img_dir=img_dir, split=split, phase=phase, target_domain="guardian")
+        dataset = get_dataset(root_dir=root_dir, data_dir=data_dir, img_dir=img_dir, split=split, phase=phase)
         split_datasets.append(dataset)
 
     test_dataset = data.ConcatDataset(split_datasets)
@@ -130,13 +136,20 @@ if __name__ == "__main__":
                                         lambda_w=0.5, lambda_mmd=1.0)
     model.load_state_dict(torch.load('./saved_model/ConDANews.pt')["model_state_dict"])
     
-    emb_tensor, z_tensor, agency_list = validate(model, device, val_iterator)
+    emb_tensor, z_tensor, agency_list, topic_list, labels_list = validate(model, device, val_iterator)
     print(emb_tensor.shape)
-    torch.save(emb_tensor, './output/newsclip_emb.pt')
+    torch.save(emb_tensor, './output/newsclip_emb_four.pt')
     print(z_tensor.shape)
-    torch.save(z_tensor, './output/z_B.pt')
+    torch.save(z_tensor, './output/z_B_four.pt')
     print(len(agency_list))
     
     import json
-    with open('./output/agency.json', 'w') as f:
+    with open('./output/agency_four.json', 'w') as f:
         json.dump(agency_list, f)
+
+    with open('./output/topic_four.json', 'w') as f:
+        json.dump(topic_list, f)
+
+    labels_list = [tensor.item() for tensor in labels_list]
+    with open('./output/labels_four.json', 'w') as f:
+        json.dump(labels_list, f)

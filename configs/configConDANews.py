@@ -16,7 +16,7 @@ class ConfigConDANews(object):
         self.args.num_labels = 2
         self.args.learning_rate = 1e-4   # original: 2e-5
         self.args.model_save_path = "./saved_model"
-        self.args.model_save_name = "ConDANews.pt"
+        self.args.model_save_name = "ConDANews_U+W.pt"
         self.args.classifier_dropout = 0.2
 
 

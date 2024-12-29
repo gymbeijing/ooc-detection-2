@@ -88,19 +88,31 @@ if __name__ == "__main__":
     metadata_dir = '/import/network-temp/yimengg/NewsCLIPpings/news_clippings/metadata'
     test_file = 'test.json'
     train_file = 'train.json'
+    topic_dict = dict()
+    topic_dict["bbc"] = []
+    topic_dict["guardian"] = []
+    topic_dict["usa_today"] = []
+    topic_dict["washington_post"] = []
     topic_list = []
     test_metadata = json.load(open(os.path.join(metadata_dir, test_file)))
     for id, item in tqdm(test_metadata.items()):
         topic = item['topic']
+        source = item['source']
+        topic_dict[source].append(topic)
         topic_list.append(topic)
 
-    train_metadata = json.load(open(os.path.join(metadata_dir, train_file)))
-    for id, item in tqdm(train_metadata.items()):
-        topic = item['topic']
-        topic_list.append(topic)
+    # train_metadata = json.load(open(os.path.join(metadata_dir, train_file)))
+    # for id, item in tqdm(train_metadata.items()):
+    #     topic = item['topic']
+    #     topic_list.append(topic)
 
     cntr = Counter(topic_list)
     print(cntr)
+
+    for source, topics in topic_dict.items():
+        cntr = Counter(topics)
+        print(f"source: {source}")
+        print(cntr)
     # normalized_cntr = [(i, cntr[i] / len(topic_list) * 100.0) for i in cntr]
     # print(normalized_cntr)
 

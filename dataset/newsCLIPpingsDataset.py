@@ -137,8 +137,8 @@ def get_dataloader_2(target_agency, shuffle, batch_size, phase='test'):
         train_loader = data.DataLoader(train_data,
                                        shuffle=shuffle,
                                        batch_size=batch_size)
-        return train_data, train_loader, train_data.__len__()   # for canmd and real_fnd (train_agentNews.py) and mdaws
-        # return train_loader, train_data.__len__()
+        # return train_data, train_loader, train_data.__len__()   # for canmd and real_fnd (train_agentNews.py) and mdaws
+        return train_loader, train_data.__len__()
     if phase=='test':
         print(f"phase: {phase}")
         split_list = os.listdir(data_dir)   # ['semantics_clip_text_text', 'scene_resnet_place', 'person_sbert_text_text', 'merged_balanced', 'semantics_clip_text_image']

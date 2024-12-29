@@ -290,8 +290,8 @@ def validate(model: nn.Module, device: str, loader: DataLoader, votes=1, desc='V
             #                  usa_today_acc="{:.4f}".format(usa_today_validation_accuracy / usa_today_epoch_size), washington_post_acc="{:.4f}".format(washington_post_validation_accuracy / washington_post_epoch_size))
             # loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
             #                  bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size), guardian_acc="{:.4f}".format(guardian_validation_accuracy / guardian_epoch_size))
-            loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
-                             bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size))
+            # loop.set_postfix(loss=loss.item(), acc="{:.4f}".format(validation_accuracy / validation_epoch_size), 
+            #                  bbc_acc="{:.4f}".format(bbc_validation_accuracy / bbc_epoch_size))
         
         outputs = np.concatenate(outputs)
         targets = np.concatenate(targets)
@@ -525,7 +525,7 @@ def run(cfg, device):
     tgt_excluded_topic = ['bbc', 'guardian', 'usa_today', 'washington_post']
     for topic in src_excluded_topic:
         tgt_excluded_topic.remove(topic)   # e.g. ['guardian', 'usa_today', 'washington_post']
-    tgt_excluded_topic.append('guardian')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
+    # tgt_excluded_topic.append('guardian')   # adding this for tsne? yes, if not modify newsDataset, then this doesn't affect
     print(f"src_excluded_topic: {src_excluded_topic}")
     print(f"tgt_excluded_topic: {tgt_excluded_topic}")
     # loading data
@@ -583,7 +583,7 @@ def run(cfg, device):
                 without_progress = 0
                 best_validation_accuracy = combined_metrics["validation/accuracy"]
 
-                model_to_save = mllm_cls_head
+                # model_to_save = mllm_cls_head
                 model_to_save = model
                 torch.save(dict(
                     epoch=epoch,

@@ -74,7 +74,7 @@ class ConfigConDA(object):
         self.args.num_labels = 2
         self.args.learning_rate = 2e-4   # original: 2e-5
         self.args.model_save_path = "./saved_model"
-        self.args.model_save_name = "ConDA_Cv.pt"
+        self.args.model_save_name = "ConDA_M.pt"
         self.args.classifier_dropout = 0.2
 
 
@@ -100,6 +100,25 @@ if __name__ == "__main__":
                                 shuffle=False,
                                 batch_size=256)
     
+    # toy_dataset = TwitterCOMMsDatasetConDATriplet(triplet_feather_path='./raw_data/toy_completed_exist_triplet.feather',
+    #                                            img_dir=root_dir + 'twitter-comms/train/images/train_image_ids',
+    #                                            original_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/blip-2_multimodal_embeds_toy_original.pt',
+    #                                         #    original_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/blip-2_multimodal_embeds_train_original.pt',
+    #                                            positive_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/blip-2_multimodal_embeds_toy_positive.pt',
+    #                                         #    positive_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_toy_synonym_replacement_GaussianBlur.pt',
+    #                                         #    positive_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/blip-2_multimodal_embeds_train_GaussianBlur.pt',
+    #                                            negative_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/blip-2_multimodal_embeds_toy_negative.pt',
+    #                                         #    negative_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/blip-2_multimodal_embeds_train_negative.pt',
+    #                                         #    augmented_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_mini_toy_rephrased.pt',
+    #                                            metadata_path=root_dir + f'twitter-comms/processed_data/metadata/blip-2_multimodal_idx_to_image_path_toy_original.json'
+    #                                            )
+    
+    ###### For sampling ######
+    random_sampler = data.RandomSampler(val_dataset, num_samples=5000)
+    val_iterator = data.DataLoader(val_dataset, batch_size=256, sampler=random_sampler)
+    ######
+
+    
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     cfg = ConfigConDA()
 
@@ -112,15 +131,15 @@ if __name__ == "__main__":
     # (3) the entire contrastive learning framework
     model = ContrastiveLearningAndTripletLossZModule(model=mllm_cls_head, mlp=mlp, loss_type="simclr", logger=None, device=device,
                                         lambda_w=0.5, lambda_mmd=1.0)
-    model.load_state_dict(torch.load('./saved_model/ConDA_Cv.pt')["model_state_dict"])
+    model.load_state_dict(torch.load('./saved_model/ConDA_M.pt')["model_state_dict"])
     
     emb_tensor, z_tensor, topic_list = validate(model, device, val_iterator)
     # print(emb_tensor.shape)
-    # torch.save(emb_tensor, './output/emb.pt')
+    torch.save(emb_tensor, './output/emb_val_5k.pt')
     print(z_tensor.shape)
-    torch.save(z_tensor, './output/z_Cv.pt')
+    torch.save(z_tensor, './output/z_M_val_5k.pt')
     print(len(topic_list))
     
-    # import json
-    # with open('./output/topic.json', 'w') as f:
-    #     json.dump(topic_list, f)
+    import json
+    with open('./output/topic_val_5k.json', 'w') as f:
+        json.dump(topic_list, f)

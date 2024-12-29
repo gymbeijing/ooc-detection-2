@@ -85,7 +85,10 @@ class TwitterCOMMsDatasetConDATriplet(Dataset):
                 "positive_multimodal_emb": positive_multimodal_emb,
                 "negative_multimodal_emb": negative_multimodal_emb,
                 "original_label": original_label,
-                "topic": topic}
+                "topic": topic,
+                'image_path': image_path,
+                'caption': item['full_text']
+                }
 
 
 def get_dataloader(cfg, few_shot_topic, shuffle, phase='val'):
@@ -123,7 +126,7 @@ def get_dataloader(cfg, few_shot_topic, shuffle, phase='val'):
         toy_iterator = data.DataLoader(toy_dataset, batch_sampler=batch_sampler)   # cannot be shuffled
         return toy_iterator, toy_dataset.__len__()
     else:  # phase=='val'
-        val_dataset = TwitterCOMMsDatasetConDATriplet(triplet_feather_path='./raw_data/val_completed_exist.feather',
+        val_dataset = TwitterCOMMsDatasetConDATriplet(triplet_feather_path='/homes/yg007/ooc_detection/raw_data/val_completed_exist.feather',
                                                img_dir=root_dir + 'twitter-comms/images/val_images/val_tweet_image_ids',
                                                original_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',
                                                positive_multimodal_embeds_path=root_dir + f'twitter-comms/processed_data/tensor/{cfg.args.base_model}_multimodal_embeds_valid.pt',

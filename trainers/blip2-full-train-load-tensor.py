@@ -132,6 +132,7 @@ def train(train_iterator, val_iterator, device):
         total_loss = 0
         num_correct = 0
         num_total = 0
+        best_acc = 0
         for i, batch in tqdm(enumerate(train_iterator, 0), desc='iterations'):
             inputs = batch["multimodal_emb"].to(device)
             labels = batch["label"].to(device)
@@ -161,7 +162,9 @@ def train(train_iterator, val_iterator, device):
         logger.info("Epoch [%d/%d]: Training accuracy: %.4f, loss: %.4f" % (
         epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
 
-        test(net, val_iterator, criterion, device)
+        acc = test(net, val_iterator, criterion, device)
+        if acc > best_acc:
+            torch.save(net.state_dict(), './saved_model/Blip2_M.pt')
 
     return net
 
@@ -197,7 +200,7 @@ def test(net, iterator, criterion, device):
 
         logger.info("Testing accuracy %.4f, loss: %.4f" % (num_correct / num_total, total_loss / num_total))
 
-    return
+    return num_correct / num_total
 
 
 def parse_args():

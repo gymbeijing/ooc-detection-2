@@ -111,6 +111,7 @@ def train(train_iterator, val_iterator, device):
         #                 root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_pred_fs_{few_shot_topic}_epoch_{epoch}.pt')
         #     save_tensor(test_true,
         #                 root_dir + f'twitter-comms/processed_data/tensor/{base_model}_test_true_fs_{few_shot_topic}_epoch_{epoch}.pt')
+        torch.save(net.state_dict(), './saved_model/Blip2_Cv.pt')
 
     return net
 

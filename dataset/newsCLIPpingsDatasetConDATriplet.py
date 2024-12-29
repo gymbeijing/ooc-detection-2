@@ -10,7 +10,9 @@ import torch
 
 class NewsCLIPpingsDatasetConDATriplet(Dataset):
     def __init__(self, img_dir, original_multimodal_embeds_path, positive_multimodal_embeds_path, 
-                 negative_multimodal_embeds_path, label_path, news_source_path, target_domain=None, phase="test"):
+                 negative_multimodal_embeds_path, label_path, news_source_path, topic_path, target_domain=None, phase="test"):   # for the case study
+    # def __init__(self, img_dir, original_multimodal_embeds_path, positive_multimodal_embeds_path, 
+    #              negative_multimodal_embeds_path, label_path, news_source_path, topic_path, caption_path, image_path_path, target_domain=None, phase="test"):   # for case study
         """
         Args:
             img_dir (string): directory that stores the images
@@ -31,6 +33,10 @@ class NewsCLIPpingsDatasetConDATriplet(Dataset):
         self.negative_multimodal_embeds = load_tensor(negative_multimodal_embeds_path)
         self.labels = load_tensor(label_path).type(torch.LongTensor)
         self.domain_labels = load_json(news_source_path)["news_source"]
+        self.topic_labels = load_json(topic_path)["topic"]
+        ### for the case study ###
+        # self.captions = load_json(caption_path)["caption"]
+        # self.image_paths = load_json(image_path_path)
 
         self.target_domain = target_domain
 
@@ -64,12 +70,17 @@ class NewsCLIPpingsDatasetConDATriplet(Dataset):
         negative_multimodal_emb = self.negative_multimodal_embeds[mapped_idx]
         original_label = self.labels[mapped_idx]
         domain_label = self.domain_labels[mapped_idx]
+        topic_label = self.topic_labels[mapped_idx]
+        ### for case study ###
 
         return {"original_multimodal_emb": original_multimodal_emb,
                 "positive_multimodal_emb": positive_multimodal_emb,
                 "negative_multimodal_emb": negative_multimodal_emb,
                 "original_label": original_label,
-                "domain_label": domain_label}
+                "domain_label": domain_label,
+                "topic_label": topic_label}
+                # "caption": self.captions[mapped_idx],
+                # "image_path": self.image_paths[str(mapped_idx)]}
     
 
 def get_dataset(root_dir, data_dir, img_dir, split, phase, target_domain):
@@ -79,8 +90,9 @@ def get_dataset(root_dir, data_dir, img_dir, split, phase, target_domain):
     negative_multimodal_embeds_path = f'{root_dir}/tensor/blip-2_{split}_multimodal_embeds_{phase}_GaussianBlur.pt'   # placeholder
     label_path = f'{root_dir}/label/blip-2_{split}_multimodal_label_{phase}_GaussianBlur.pt'   # original and positive share the labels
     news_source_path = f'{root_dir}/news_source/blip-2_{split}_multimodal_news_source_{phase}_GaussianBlur.json'
+    topic_path = f'{root_dir}/topic/{split}_topic_{phase}_GaussianBlur.json'
     target_domain = target_domain
-    dataset = NewsCLIPpingsDatasetConDATriplet(img_dir, original_multimodal_embeds_path, positive_multimodal_embeds_path, negative_multimodal_embeds_path, label_path, news_source_path, target_domain, phase)
+    dataset = NewsCLIPpingsDatasetConDATriplet(img_dir, original_multimodal_embeds_path, positive_multimodal_embeds_path, negative_multimodal_embeds_path, label_path, news_source_path, topic_path, target_domain, phase)
     return dataset
 
 

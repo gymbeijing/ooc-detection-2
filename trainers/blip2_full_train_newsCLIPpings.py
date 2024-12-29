@@ -107,6 +107,7 @@ def train(train_iterator, val_iterator, device):
         epoch + 1, EPOCHS, num_correct / num_total, total_loss / num_total))
 
         test(net, val_iterator, criterion, device)
+        torch.save(net.state_dict(), './saved_model/Blip2_U+W.pt')
 
     return net
 
